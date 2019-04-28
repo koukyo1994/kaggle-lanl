@@ -59,7 +59,7 @@ def make_dataset(val_eq_nums=[15,16]):
 def create_result_dir(prefix: str) -> str:
     result_dir = Path(out,'{}_{}'.format(prefix,time.strftime('%Y-%m-%d_%H-%M-%S')))
     result_dir.mkdir(exist_ok=True,parents=True)
-    # shutil.copy(__file__, Path(result_dir, __file__).name))
+    shutil.copy(__file__, Path(result_dir, __file__).name))
 
     return result_dir
 
