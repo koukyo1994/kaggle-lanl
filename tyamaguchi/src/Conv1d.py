@@ -12,19 +12,14 @@ import shutil
 from importlib import import_module
 from tqdm import tqdm
 import time
+import argparse
+import sys
 
+sys.path.append('.')
 
-TrainPath = Path('tyamaguchi/src/Conv1d.py')
 DataPath = Path('input')
 MasterFile = 'train_split_master.csv'
 delimiter = ','
-
-ModelPath = Path('tyamaguchi','src','models','CNN1D.py')
-ModelName = 'CNN1D'
-gpu_id = 0
-lr = 0.05
-batchsize = 256
-epoch = 200
 out = Path('tyamaguchi/nn_results')
 
 
@@ -69,6 +64,41 @@ def create_result_dir(prefix: str) -> str:
     return result_dir
 
 def main():
+    parser = argparse.ArgumentParser(description='Change Point Detection')
+    parser.add_argument('--model_path', type=str, default='tyamaguchi/src/models/CNN1D.py',
+                        help='Path of model file')
+    parser.add_argument('--model_name', type=str, default='CNN1D',
+                        help='Model class name')
+    parser.add_argument('--batchsize', '-b', type=int, default=256,
+                        help='Number of images in each mini-batch')
+    parser.add_argument('--learnrate', '-l', type=float, default=0.05,
+                        help='Learning rate for SGD')
+    parser.add_argument('--epoch', '-e', type=int, default=300,
+                        help='Number of sweeps over the dataset to train')
+    parser.add_argument('--gpu', '-g', type=int, default=0,
+                        help='GPU ID (negative value indicates CPU)')
+    args = parser.parse_args()
+
+
+
+    # ModelPath = Path('tyamaguchi','src','models','CNN1D.py')
+    # ModelName = 'CNN1D'
+    # gpu_id = 0
+    # lr = 0.05
+    # batchsize = 256
+    # epoch = 300
+    # out = Path('tyamaguchi/nn_results')
+
+    ModelPath = Path(args.model_path)
+    ModelName = args.model_name
+    gpu_id = args.gpu
+    lr = args.learnrate
+    batchsize = args.batchsize
+    epoch = args.epoch
+
+
+
+
     model_path = os.path.splitext(ModelPath)[0].replace('/','.')
     model_module = import_module(model_path)
     model = getattr(model_module, ModelName)()
@@ -105,7 +135,7 @@ def main():
 
     trainer.extend(extensions.snapshot(filename='snaphot_epoch_{.updater.epoch}'),trigger=(epoch, 'epoch'))
 
-    trainer.extend(extensions.LogReport(trigger=(1,'iteration')))
+    trainer.extend(extensions.LogReport(trigger=(1,'epoch')))
 
     trainer.extend(extensions.PrintReport(
         ['epoch', 'main/loss', 'validation/main/loss', 'elapsed_time']))
