@@ -41,9 +41,7 @@ class CNN1D(chainer.ChainList):
 
     def __init__(self):
         super(CNN1D, self).__init__(
-            ConvBlock(1, 3, 1, 1),
-            ConvBlock(1, 3, 1, 1),
-            ConvBlock(1, 3, 1, 1),
+            ConvBlock(1, 5, 2),
             ConvBlock(2, 100, 10),
             ConvBlock(4, 50, 5),
             ConvBlock(8, 20, 3),

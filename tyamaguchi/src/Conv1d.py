@@ -44,7 +44,7 @@ def make_dataset(slide=150_000, val_eq_nums=[14,15,16]):
 def create_result_dir(prefix):
     result_dir = Path(out,'{}_{}'.format(prefix,time.strftime('%Y-%m-%d_%H-%M-%S')))
     result_dir.mkdir(exist_ok=True,parents=True)
-    shutil.copy(__file__, Path(result_dir, __file__).name)
+    shutil.copy(__file__, result_dir/Path(__file__).name)
 
     return result_dir
 
