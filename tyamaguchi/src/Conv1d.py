@@ -17,42 +17,27 @@ import sys
 
 sys.path.append('.')
 
-DataPath = Path('input')
-MasterFile = 'train_split_master.csv'
+DataPath = Path('input/train_wave_split')
 delimiter = ','
 out = Path('tyamaguchi/nn_results')
 
+rows = 150_000
 
-def make_dataset(val_eq_nums=[15,16]):
-    train_file_nums = []
-    val_file_nums = []
-
-    with open(DataPath/MasterFile, 'r') as reader:
-        header = next(reader)
-        for line in reader:
-            thisData = line.strip().split(delimiter)
-            if thisData[1] != '150000':
-                continue
-            if thisData[-1]!=thisData[-2]:
-                continue
-            if int(thisData[-1]) in val_eq_nums:
-                val_file_nums.append(thisData[0])
-            else:
-                train_file_nums.append(thisData[0])
-
+def make_dataset(slide=150_000, val_eq_nums=[14,15,16]):
     train = []
     val = []
 
-
-    for i in tqdm(train_file_nums):
-        df = pd.read_csv(DataPath/'train_split'/'train_{}.csv'.format(i))
-        train.append((np.array([df['acoustic_data'].values],'float32'),np.array([df['time_to_failure'].values[-1]],'float32')))
-
-
-    for i in tqdm(val_file_nums):
-        df = pd.read_csv(DataPath/'train_split'/'train_{}.csv'.format(i))
-        val.append((np.array([df['acoustic_data'].values],'float32'),np.array([df['time_to_failure'].values[-1]],'float32')))
-
+    for eq_num in tqdm(range(17)):
+        data = pd.read_csv(DataPath/'train_wave_{}.csv'.format(eq_num))
+        acoustic_data = data['acoustic_data'].values
+        time_data = data['time_to_failure'].values
+        for n in tqdm(range((len(data)-rows)//slide+1)):
+            x = acoustic_data[slide*n:slide*n+rows]
+            y = time_data[slide*n+rows-1]
+            if eq_num not in val_eq_nums:
+                train.append((np.array([x],'float32'),(np.array([y],'float32'))))
+            else:
+                val.append((np.array([x],'float32'),(np.array([y],'float32'))))
 
     return train, val
 
@@ -69,6 +54,8 @@ def main():
                         help='Path of model file')
     parser.add_argument('--model_name', type=str, default='CNN1D',
                         help='Model class name')
+    parser.add_argument('--slide', '-s', type=int, default=150_000,
+                        help='Length of sliding window')
     parser.add_argument('--batchsize', '-b', type=int, default=256,
                         help='Number of images in each mini-batch')
     parser.add_argument('--learnrate', '-l', type=float, default=0.05,
@@ -91,12 +78,11 @@ def main():
 
     ModelPath = Path(args.model_path)
     ModelName = args.model_name
+    slide = args.slide
     gpu_id = args.gpu
     lr = args.learnrate
     batchsize = args.batchsize
     epoch = args.epoch
-
-
 
 
     model_path = os.path.splitext(ModelPath)[0].replace('/','.')
@@ -115,7 +101,7 @@ def main():
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(5e-4))
 
-    train,val = make_dataset()
+    train,val = make_dataset(slide)
     train_iter = chainer.iterators.SerialIterator(train, batchsize)
     val_iter = chainer.iterators.SerialIterator(val, batchsize,
                                                   repeat=False, shuffle=False)
