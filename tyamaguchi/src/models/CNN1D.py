@@ -16,7 +16,7 @@ class ConvBlock(chainer.Chain):
     def __call__(self, x):
         h = F.relu(self.bn(self.conv(x)))
         if self.pool_drop:
-            h = F.max_pooling_1d(h, 5, 5)
+            h = F.max_pooling_1d(h, 10, 10)
             h = F.dropout(h, ratio=0.3)
         return h
 
@@ -46,10 +46,10 @@ class CNN1D(chainer.ChainList):
             ConvBlock(8, 20),
             ConvBlock(16, 10, pool_drop=True),
             ConvBlock(64, 10, 2),
-            ConvBlock(64, 10, 2),
+            ConvBlock(64, 10),
             ConvBlock(256, 3, 1, 1),
-            ConvBlock(512, 3, 1, 1),
-            ConvBlock(1024,3, 1, 1),
+            ConvBlock(512, 3, 2),
+            ConvBlock(1024, 3),
             ConvBlock(1024,3, 1, 1),
             ConvBlock(2048),
             ConvBlock(2048, pool_drop=True),
