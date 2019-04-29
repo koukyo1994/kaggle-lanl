@@ -14,6 +14,11 @@ from tqdm import tqdm
 import time
 import argparse
 import sys
+from statsmodels.robust import mad
+import scipy
+from scipy import signal
+from scipy.signal import butter
+import pywt
 
 sys.path.append('.')
 
@@ -22,6 +27,28 @@ delimiter = ','
 out = Path('tyamaguchi/nn_results')
 
 rows = 150_000
+n_samples = 150_000
+sample_duration = 0.02
+sample_rate = n_samples * (1 / sample_duration)
+
+def maddest(d, axis=None):
+    return np.mean(np.absolute(d - np.mean(d, axis)), axis)
+
+def high_pass_filter(x, low_cutoff=1000, sample_rate=sample_rate):
+    nyquist = 0.5 * sample_rate
+    norm_low_cutoff = low_cutoff / nyquist
+    sos = butter(10, Wn=[norm_low_cutoff], btype='highpass', output='sos')
+    filtered_sig = signal.sosfilt(sos, x)
+
+    return filtered_sig
+
+def denoise_signal( x, wavelet='db4', level=1):
+    coeff = pywt.wavedec( x, wavelet, mode="per" )
+    sigma = (1/0.6745) * maddest( coeff[-level] )
+    uthresh = sigma * np.sqrt( 2*np.log( len( x ) ) )
+    coeff[1:] = ( pywt.threshold( i, value=uthresh, mode='hard' ) for i in coeff[1:] )
+
+    return pywt.waverec( coeff, wavelet, mode='per' )
 
 def make_dataset(slide=150_000, val_eq_nums=[1,15,16]):
     train = []
@@ -34,6 +61,8 @@ def make_dataset(slide=150_000, val_eq_nums=[1,15,16]):
         for n in tqdm(range((len(data)-rows)//slide+1)):
             x = acoustic_data[slide*n:slide*n+rows]
             y = time_data[slide*n+rows-1]
+            x = high_pass_filter(x, low_cutoff=10000, sample_rate=sample_rate)
+            x = denoise_signal(x, wavelet='haar', level=1)
             if eq_num not in val_eq_nums:
                 train.append((np.array([x],'float32'),(np.array([y],'float32'))))
             else:
