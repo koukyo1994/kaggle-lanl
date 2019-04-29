@@ -23,7 +23,7 @@ out = Path('tyamaguchi/nn_results')
 
 rows = 150_000
 
-def make_dataset(slide=150_000, val_eq_nums=[14,15,16]):
+def make_dataset(slide=150_000, val_eq_nums=[1,15,16]):
     train = []
     val = []
 
