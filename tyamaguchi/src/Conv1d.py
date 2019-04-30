@@ -63,6 +63,8 @@ def make_dataset(slide=150_000, val_eq_nums=[1,15,16]):
             y = time_data[slide*n+rows-1]
             x = high_pass_filter(x, low_cutoff=10000, sample_rate=sample_rate)
             x = denoise_signal(x, wavelet='haar', level=1)
+            x = F.max_pooling_1d(np.array([[x]]),100,100)
+            x = x[0][0].data
             if eq_num not in val_eq_nums:
                 train.append((np.array([x],'float32'),(np.array([y],'float32'))))
             else:
