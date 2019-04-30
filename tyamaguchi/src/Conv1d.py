@@ -4,6 +4,7 @@ import chainer.functions as F
 from chainer import training
 from chainer.training import extensions
 from chainer.training import triggers
+from chainer.datasets import split_dataset_random
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -42,7 +43,7 @@ def high_pass_filter(x, low_cutoff=1000, sample_rate=sample_rate):
 
     return filtered_sig
 
-def denoise_signal( x, wavelet='db4', level=1):
+def denoise_signal(x, wavelet='db4', level=1):
     coeff = pywt.wavedec( x, wavelet, mode="per" )
     sigma = (1/0.6745) * maddest( coeff[-level] )
     uthresh = sigma * np.sqrt( 2*np.log( len( x ) ) )
@@ -70,6 +71,9 @@ def make_dataset(slide=150_000, val_eq_nums=[1,15,16]):
             else:
                 val.append((np.array([x],'float32'),(np.array([y],'float32'))))
 
+    if len(val_eq_nums) == 0:
+        return train
+
     return train, val
 
 def create_result_dir(prefix):
@@ -87,6 +91,8 @@ def main():
                         help='Model class name')
     parser.add_argument('--slide', '-s', type=int, default=150_000,
                         help='Length of sliding window')
+    parser.add_argument('--validation', '-v', type=str, default='yes',
+                        help='Validation by eq_num or not')
     parser.add_argument('--batchsize', '-b', type=int, default=256,
                         help='Number of images in each mini-batch')
     parser.add_argument('--learnrate', '-l', type=float, default=0.05,
@@ -110,6 +116,7 @@ def main():
     ModelPath = Path(args.model_path)
     ModelName = args.model_name
     slide = args.slide
+    validation = args.validation
     gpu_id = args.gpu
     lr = args.learnrate
     batchsize = args.batchsize
@@ -132,10 +139,15 @@ def main():
     optimizer.setup(model)
     optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(5e-4))
 
-    train,val = make_dataset(slide)
+    if validation == 'no':
+        train = make_dataset(slide,[])
+        train, val = split_dataset_random(train, int(len(train)*0.99), seed=0)
+    else:
+        train,val = make_dataset(slide)
+
     train_iter = chainer.iterators.SerialIterator(train, batchsize)
     val_iter = chainer.iterators.SerialIterator(val, batchsize,
-                                                  repeat=False, shuffle=False)
+                                                      repeat=False, shuffle=False)
 
     stop_trigger = (epoch, 'epoch')
     result_dir = create_result_dir(ModelName)
