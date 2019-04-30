@@ -1,6 +1,6 @@
 from pathlib import Path
 
-DataPath = Path('input')
+DataPath = Path('../../input')
 DestinationPath = DataPath / 'train_wave_split'
 DestinationPath.mkdir(exist_ok=True)
 rows = 150000
@@ -9,6 +9,7 @@ delimiter = ','
 
 def main():
     time_ref = 0
+    writer = None
     with open(DataPath / 'train' / 'train.csv', 'r') as reader:
         header = next(reader)
         n = 0
