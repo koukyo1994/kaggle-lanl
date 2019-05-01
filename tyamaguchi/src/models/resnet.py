@@ -48,7 +48,9 @@ class ResNet(chainer.Chain):
         super(ResNet, self).__init__()
         w = chainer.initializers.HeNormal()
         with self.init_scope():
-            self.conv1 = L.Convolution1D(None, 64, 3, 1, 0, True, w)
+            self.conv1 = L.Convolution1D(None, 64, 20, 5, 0, True, w)
+            self.conv2 = L.Convolution1D(64, 64, 20, 5, 0, True, w)
+            self.bn1 = L.BatchNormalization(64)
             self.bn2 = L.BatchNormalization(64)
             self.res3 = Block(64, 64, 256, n_blocks[0], 1)
             self.res4 = Block(256, 128, 512, n_blocks[1], 2)
@@ -57,7 +59,8 @@ class ResNet(chainer.Chain):
             self.fc7 = L.Linear(None, n_class)
 
     def __call__(self, x):
-        h = F.relu(self.bn2(self.conv1(x)))
+        h = F.relu(self.bn1(self.conv1(x)))
+        h = F.relu(self.bn2(self.conv2(h)))
         h = self.res3(h)
         h = self.res4(h)
         h = self.res5(h)
