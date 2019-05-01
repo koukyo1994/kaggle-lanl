@@ -41,7 +41,7 @@ if __name__ == '__main__':
         except StopIteration:
             break
 
-    features = np.vstack(feature_list)
+    features = np.asarray(feature_list)
     target = np.array(target_list)
 
     save_dir = Path("../../../../features/basic")

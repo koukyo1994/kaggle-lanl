@@ -4,7 +4,7 @@ import numpy as np
 
 from datetime import datetime as dt
 
-from sklearn.model_selection import StratifiedKFold
+from sklearn.model_selection import KFold
 
 
 class AbstractTrainer(metaclass=abc.ABCMeta):
@@ -14,11 +14,11 @@ class AbstractTrainer(metaclass=abc.ABCMeta):
         self.seed = seed
         self.objective = objective
 
-        self.fold = StratifiedKFold(n_splits, shuffle=True, random_state=seed)
+        self.fold = KFold(n_splits, shuffle=True, random_state=seed)
         self.tag = dt.now().strftime("%Y-%m-%d-%H-%M-%S")
 
-        if (self.objective != "classification") or (self.objective !=
-                                                    "regression"):
+        if (self.objective != "classification") and (self.objective !=
+                                                     "regression"):
             raise NotImplementedError
 
     def __str__(self):
@@ -31,7 +31,9 @@ class AbstractTrainer(metaclass=abc.ABCMeta):
         elif self.objective == "regression":
             self.train_preds = np.zeros((len(X), ))
 
-        for i, (trn_idx, val_idx) in enumerate(self.fold.split(X, y)):
+        idx = np.arange(len(X))
+
+        for i, (trn_idx, val_idx) in enumerate(self.fold.split(idx)):
             self.fold_num = i + 1
             self.logger.info("=" * 20)
             self.logger.info(f"Fold {self.fold_num}")

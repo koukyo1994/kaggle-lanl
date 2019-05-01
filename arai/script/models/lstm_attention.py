@@ -1,6 +1,6 @@
 import torch.nn as nn
 
-from arai.script.models.layers import Attention
+from arai.script.models.layers.attention import Attention
 
 
 class LSTMAttentionNet(nn.Module):

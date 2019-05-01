@@ -17,7 +17,7 @@ def _min_max_transf(ts, min_data, max_data, range_needed=(-1, 1)):
 
 
 def transform_ts(ts, n_dim=150, min_max=(-1, 1)):
-    ts_std = _min_max_transf(ts, min_data=-128, max_data=127)
+    ts_std = _min_max_transf(ts, min_data=-1000, max_data=999)
     bucket_size = int(150000 / n_dim)
     new_ts = []
     for i in progress_bar(range(0, 150000, bucket_size)):
