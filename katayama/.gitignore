@@ -1,2 +1,2 @@
-data/input/*.csv
-data/input/*.zip
+src/data/input/*.csv
+*.zip
