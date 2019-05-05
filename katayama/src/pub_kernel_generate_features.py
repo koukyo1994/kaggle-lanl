@@ -8,7 +8,8 @@ import pandas as pd
 from paths import *
 from features.FeatureGenerator import FeatureGenerator
 
-
+# %load_ext autoreload
+# %autoreload 2
 # Import config
 with open(CONF_DIR / 'config.json', 'r') as f:
     config = json.load(f)
@@ -17,13 +18,14 @@ TRAIN_DATA_LENGTH = config['data']['TRAIN_DATA_LENGTH']
 
 
 def main():
+    n_jobs = 8
     chunk_size = 50000
     feature_dir_name = f'lanl-features-{chunk_size}'
 
-    training_fg = FeatureGenerator(dtype='train', n_jobs=20, chunk_size=chunk_size)
-    training_data = training_fg.generate()
+    training_fg = FeatureGenerator(dtype='train', n_jobs=n_jobs, chunk_size=chunk_size)
+    training_data = training_fg.generate_2()
 
-    test_fg = FeatureGenerator(dtype='test', n_jobs=20, chunk_size=150000)
+    test_fg = FeatureGenerator(dtype='test', n_jobs=n_jobs, chunk_size=150000)
     test_data = test_fg.generate()
 
     X = training_data.drop(['target', 'seg_id'], axis=1)
@@ -52,10 +54,19 @@ def main():
     X_test.to_csv(out_dir / 'test_features.csv', index=False)
     pd.DataFrame(y).to_csv(out_dir / f'y_{chunk_size}.csv', index=False)
 
-    slide_size = 50000
-    n_train = int(TRAIN_DATA_LENGTH / slide_size)
-    for i in range(0, TRAIN_DATA_LENGTH, n_train):
-        print(i)
+    # slide_size = 50000
+    # start = 0
+    # end = 150000
+    # index_tuple_list = []
+    # while end <= TRAIN_DATA_LENGTH:
+    #     index_tuple_list.append((start, end))
+    #     start += slide_size
+    #     end += slide_size
+    # index_tuple_list.append((start, TRAIN_DATA_LENGTH-1))
+    #
+    # for index_tuple in index_tuple_list:
+    #     # index_tuple = index_tuple_list[1]
+    #     train.iloc[index_tuple[0]:index_tuple[1], :]
 
 
 if __name__ == '__main__':

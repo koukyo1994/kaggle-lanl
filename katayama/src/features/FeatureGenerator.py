@@ -95,7 +95,7 @@ class FeatureGenerator(object):
     def read_chunks(self):
         if self.dtype == 'train':
             iter_df = pd.read_csv(self.filename, iterator=True, chunksize=self.chunk_size,
-                                  dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64}, nrows=250000)
+                                  dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64})
             if self.chunk_size == 150000:
                 for counter, df in enumerate(iter_df):
                     x = df.acoustic_data.values
@@ -129,7 +129,7 @@ class FeatureGenerator(object):
                 raise ValueError(f'Invalid chunk_size. chunk_size:{self.chunk_size}')
 
         elif self.dtype == 'test':
-            for seg_id, f in self.test_files[:5]:
+            for seg_id, f in self.test_files:
                 df = pd.read_csv(f, dtype={'acoustic_data': np.float64})
                 x = df.acoustic_data.values[-self.chunk_size:]
                 del df
@@ -137,8 +137,13 @@ class FeatureGenerator(object):
         else:
             raise ValueError(f'Unknown dtype. dtype:{self.dtype}')
 
-    def read_chunks_2(self):
-        return 
+    def slice_train_data(self, train, counter, index_tuple):
+        df = train.iloc[index_tuple[0]:index_tuple[1], :]
+        print(counter, index_tuple, df.shape)
+        x = df.acoustic_data.values
+        y = df.time_to_failure.values[-1]
+        seg_id = 'train_' + str(counter)
+        return x, y, seg_id
 
     def get_features(self, x, y, seg_id):
         """
@@ -165,6 +170,32 @@ class FeatureGenerator(object):
 
         return main_dict
 
+    def get_features_2(self, train, counter, index_tuple):
+        """
+        Gets three groups of features: from original data and from reald and imaginary parts of FFT.
+        """
+
+        x, y, seg_id, = self.slice_train_data(train, counter, index_tuple)
+
+        x = pd.Series(x)
+
+        zc = np.fft.fft(x)
+        realFFT = pd.Series(np.real(zc))
+        imagFFT = pd.Series(np.imag(zc))
+
+        main_dict = self.features(x, y, seg_id)
+        r_dict = self.features(realFFT, y, seg_id)
+        i_dict = self.features(imagFFT, y, seg_id)
+
+        for k, v in r_dict.items():
+            if k not in ['target', 'seg_id']:
+                main_dict[f'fftr_{k}'] = v
+
+        for k, v in i_dict.items():
+            if k not in ['target', 'seg_id']:
+                main_dict[f'ffti_{k}'] = v
+
+        return main_dict
 
     def features(self, x, y, seg_id):
         feature_dict = dict()
@@ -353,7 +384,7 @@ class FeatureGenerator(object):
 
     def generate(self):
         feature_list = []
-        if self.chunk_size == 150000:
+        if self.chunk_size == 150000 and self.dtype == 'train':
             res = Parallel(n_jobs=self.n_jobs,
                            backend='threading')(delayed(self.get_features)(x, y, s)
                                                 for s, x, y in tqdm(self.read_chunks(), total=self.total_data))
@@ -368,4 +399,27 @@ class FeatureGenerator(object):
         return pd.DataFrame(feature_list)
 
     def generate_2(self):
+        feature_list = []
+
+        if self.dtype == 'train':
+            train = pd.read_csv(DATA_DIR / 'input/train.csv', dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64})
+
+            start = 0
+            end = 150000
+            index_tuple_list = []
+            while end <= train.shape[0]:
+                index_tuple_list.append((start, end))
+                start += self.chunk_size
+                end += self.chunk_size
+            index_tuple_list.append((start, train.shape[0]-1))
+
+            res = Parallel(n_jobs=self.n_jobs, verbose=3)([delayed(self.get_features_2)(train, counter, index_tuple) for counter, index_tuple in enumerate(index_tuple_list)])
+        else:
+            res = Parallel(n_jobs=self.n_jobs,
+                           backend='threading')(delayed(self.get_features)(x, y, s)
+                                                for s, x, y in tqdm(self.read_chunks(), total=self.total_data))
+
+        for r in res:
+            feature_list.append(r)
+
         return pd.DataFrame(feature_list)
