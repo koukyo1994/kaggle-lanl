@@ -235,7 +235,6 @@ def main():
     X = X[:-1]
     y = y[:-1]
 
-
     n_fold = 5
     folds = KFold(n_splits=n_fold, shuffle=True, random_state=11)
 
