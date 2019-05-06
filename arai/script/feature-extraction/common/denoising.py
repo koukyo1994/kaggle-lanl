@@ -33,3 +33,8 @@ def highpass_denoise(x, low_cutoff, sample_rate):
     x = _high_pass_filter(x, low_cutoff, sample_rate)
     x = _denoise_signal(x, wavelet="haar", level=1)
     return x
+
+
+def denoise(x):
+    x = _denoise_signal(x, wavelet="haar", level=1)
+    return x
