@@ -19,6 +19,8 @@ from scipy.signal import hann
 from scipy.signal import convolve
 from scipy import stats
 
+import features.denoising as deno
+
 # os.chdir('./katayama/src')
 sys.path.append('../')
 from paths import *
@@ -92,13 +94,15 @@ class FeatureGenerator(object):
                 self.test_files.append((seg_id, DATA_DIR / f'input/test/{seg_id}.csv'))
             self.total_data = int(len(submission))
 
-    def read_chunks(self):
+    def read_chunks(self, denoising=False):
         if self.dtype == 'train':
             iter_df = pd.read_csv(self.filename, iterator=True, chunksize=self.chunk_size,
                                   dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64})
             if self.chunk_size == 150000:
                 for counter, df in enumerate(iter_df):
                     x = df.acoustic_data.values
+                    if denoising:
+                        x = deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1)
                     y = df.time_to_failure.values[-1]
                     seg_id = 'train_' + str(counter)
                     del df
@@ -132,6 +136,8 @@ class FeatureGenerator(object):
             for seg_id, f in self.test_files:
                 df = pd.read_csv(f, dtype={'acoustic_data': np.float64})
                 x = df.acoustic_data.values[-self.chunk_size:]
+                if denoising:
+                    x = deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1)
                 del df
                 yield seg_id, x, -999
         else:
@@ -139,7 +145,6 @@ class FeatureGenerator(object):
 
     def slice_train_data(self, train, counter, index_tuple):
         df = train.iloc[index_tuple[0]:index_tuple[1], :]
-        print(counter, index_tuple, df.shape)
         x = df.acoustic_data.values
         y = df.time_to_failure.values[-1]
         seg_id = 'train_' + str(counter)
@@ -149,33 +154,7 @@ class FeatureGenerator(object):
         """
         Gets three groups of features: from original data and from reald and imaginary parts of FFT.
         """
-
-        x = pd.Series(x)
-
-        zc = np.fft.fft(x)
-        realFFT = pd.Series(np.real(zc))
-        imagFFT = pd.Series(np.imag(zc))
-
-        main_dict = self.features(x, y, seg_id)
-        r_dict = self.features(realFFT, y, seg_id)
-        i_dict = self.features(imagFFT, y, seg_id)
-
-        for k, v in r_dict.items():
-            if k not in ['target', 'seg_id']:
-                main_dict[f'fftr_{k}'] = v
-
-        for k, v in i_dict.items():
-            if k not in ['target', 'seg_id']:
-                main_dict[f'ffti_{k}'] = v
-
-        return main_dict
-
-    def get_features_2(self, train, counter, index_tuple):
-        """
-        Gets three groups of features: from original data and from reald and imaginary parts of FFT.
-        """
-
-        x, y, seg_id, = self.slice_train_data(train, counter, index_tuple)
+        print(f'seg_id: {seg_id}, x length: {len(x)}, y: {y}')
 
         x = pd.Series(x)
 
@@ -382,23 +361,19 @@ class FeatureGenerator(object):
 
         return feature_dict
 
-    def generate(self):
+    def generate(self, denoising=False):
         feature_list = []
-        if self.chunk_size == 150000 and self.dtype == 'train':
-            res = Parallel(n_jobs=self.n_jobs,
-                           backend='threading')(delayed(self.get_features)(x, y, s)
-                                                for s, x, y in tqdm(self.read_chunks(), total=self.total_data))
-        else:
-            res = []
-            for s, x, y in tqdm(self.read_chunks()):
-                res.append(self.get_features(x, y, s))
+
+        res = Parallel(n_jobs=self.n_jobs,
+                       backend='threading')(delayed(self.get_features)(x, y, s)
+                                            for s, x, y in tqdm(self.read_chunks(denoising=denoising), total=self.total_data))
 
         for r in res:
             feature_list.append(r)
 
         return pd.DataFrame(feature_list)
 
-    def generate_2(self):
+    def generate_2(self, denoising=False):
         feature_list = []
 
         if self.dtype == 'train':
@@ -413,11 +388,24 @@ class FeatureGenerator(object):
                 end += self.chunk_size
             index_tuple_list.append((start, train.shape[0]-1))
 
-            res = Parallel(n_jobs=self.n_jobs, verbose=3)([delayed(self.get_features_2)(train, counter, index_tuple) for counter, index_tuple in enumerate(index_tuple_list)])
+            xs = []
+            ys = []
+            seg_ids = []
+            for counter, index_tuple in enumerate(index_tuple_list):
+                x, y, seg_id, = self.slice_train_data(train, counter, index_tuple)
+                if denoising:
+                    xs.append(deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1))
+                else:
+                    xs.append(x)
+                ys.append(y)
+                seg_ids.append(seg_id)
+            del train
+
+            res = Parallel(n_jobs=self.n_jobs, backend='threading')([delayed(self.get_features)(list(xs[i]), ys[i], seg_ids[i]) for i in tqdm(range(len(xs)))])
         else:
             res = Parallel(n_jobs=self.n_jobs,
                            backend='threading')(delayed(self.get_features)(x, y, s)
-                                                for s, x, y in tqdm(self.read_chunks(), total=self.total_data))
+                                                for s, x, y in tqdm(self.read_chunks(denoising=denoising), total=self.total_data))
 
         for r in res:
             feature_list.append(r)

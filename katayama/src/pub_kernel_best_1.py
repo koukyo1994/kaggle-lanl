@@ -38,7 +38,7 @@ from scipy.signal import hann
 from scipy.signal import convolve
 from scipy import stats
 
-# os.chdir('./katayama/src')
+# os.chdir('./src')
 from paths import *
 
 
@@ -217,6 +217,8 @@ def create_submission_file(y_pred):
     return submission
 
 def main():
+    slide_size = 50000
+
     # load featureed datasets
     train_features = pd.read_csv(FEATURES_DIR / 'lanl-features/train_features.csv')
     test_features = pd.read_csv(FEATURES_DIR / 'lanl-features/test_features.csv')

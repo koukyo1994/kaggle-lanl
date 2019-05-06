@@ -18,15 +18,17 @@ TRAIN_DATA_LENGTH = config['data']['TRAIN_DATA_LENGTH']
 
 
 def main():
-    n_jobs = 8
+    n_jobs = -1
     chunk_size = 50000
+    denoising = True
+
     feature_dir_name = f'lanl-features-{chunk_size}'
 
     training_fg = FeatureGenerator(dtype='train', n_jobs=n_jobs, chunk_size=chunk_size)
-    training_data = training_fg.generate_2()
+    training_data = training_fg.generate_2(denoising=denoising)
 
     test_fg = FeatureGenerator(dtype='test', n_jobs=n_jobs, chunk_size=150000)
-    test_data = test_fg.generate()
+    test_data = test_fg.generate_2(denoising=denoising)
 
     X = training_data.drop(['target', 'seg_id'], axis=1)
     X_test = test_data.drop(['target', 'seg_id'], axis=1)
@@ -50,50 +52,16 @@ def main():
     # Save datasets
     out_dir = FEATURES_DIR / feature_dir_name
     out_dir.mkdir(parents=True, exist_ok=True)
-    X.to_csv(out_dir / f'train_features_{chunk_size}.csv', index=False)
-    X_test.to_csv(out_dir / 'test_features.csv', index=False)
-    pd.DataFrame(y).to_csv(out_dir / f'y_{chunk_size}.csv', index=False)
 
-    # slide_size = 50000
-    # start = 0
-    # end = 150000
-    # index_tuple_list = []
-    # while end <= TRAIN_DATA_LENGTH:
-    #     index_tuple_list.append((start, end))
-    #     start += slide_size
-    #     end += slide_size
-    # index_tuple_list.append((start, TRAIN_DATA_LENGTH-1))
-    #
-    # for index_tuple in index_tuple_list:
-    #     # index_tuple = index_tuple_list[1]
-    #     train.iloc[index_tuple[0]:index_tuple[1], :]
+    if denoising:
+        X.to_csv(out_dir / f'train_features_denoised_{chunk_size}.csv', index=False)
+        X_test.to_csv(out_dir / 'test_features_denoised.csv', index=False)
+        pd.DataFrame(y).to_csv(out_dir / f'y_denoised_{chunk_size}.csv', index=False)
+    else:
+        X.to_csv(out_dir / f'train_features_{chunk_size}.csv', index=False)
+        X_test.to_csv(out_dir / 'test_features.csv', index=False)
+        pd.DataFrame(y).to_csv(out_dir / f'y_{chunk_size}.csv', index=False)
 
 
 if __name__ == '__main__':
     main()
-
-
-    # chunk_size = 50000
-    # iter_df = pd.read_csv(DATA_DIR / 'input/train.csv', iterator=True, chunksize=chunk_size, dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64})
-    #
-    # assert 150000/chunk_size, 'chunk size should be able to divide 150000.'
-    #
-    # df = pd.DataFrame()
-    # for _ in range(int(150000/chunk_size)):
-    #     df = df.append(iter_df.get_chunk())
-    #
-    # seg_id_num = 1
-    # for sub_df in iter_df:
-    #     # sub_df = iter_df.get_chunk()
-    #     x = df.acoustic_data.values
-    #     y = df.time_to_failure.values[-1]
-    #     seg_id = 'train_' + str(seg_id_num)
-    #
-    #     # Update variables
-    #     df = df.iloc[chunk_size:, :].append(sub_df)
-    #     seg_id_num += 1
-    #
-    #     print(df.index[0], df.index[-1], seg_id_num)
-    #
-    #     del sub_df
-    #     yield seg_id, x, y
