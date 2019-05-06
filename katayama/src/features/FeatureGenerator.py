@@ -143,17 +143,47 @@ class FeatureGenerator(object):
         else:
             raise ValueError(f'Unknown dtype. dtype:{self.dtype}')
 
-    def slice_train_data(self, train, counter, index_tuple):
+    def slice_train_data(self, train, counter, index_tuple, denoising=False):
         df = train.iloc[index_tuple[0]:index_tuple[1], :]
         x = df.acoustic_data.values
+        if denoising:
+            x = deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1)
         y = df.time_to_failure.values[-1]
         seg_id = 'train_' + str(counter)
-        return x, y, seg_id
+        return list(x), y, seg_id
 
     def get_features(self, x, y, seg_id):
         """
         Gets three groups of features: from original data and from reald and imaginary parts of FFT.
         """
+        print(f'seg_id: {seg_id}, x length: {len(x)}, y: {y}')
+
+        x = pd.Series(x)
+
+        zc = np.fft.fft(x)
+        realFFT = pd.Series(np.real(zc))
+        imagFFT = pd.Series(np.imag(zc))
+
+        main_dict = self.features(x, y, seg_id)
+        r_dict = self.features(realFFT, y, seg_id)
+        i_dict = self.features(imagFFT, y, seg_id)
+
+        for k, v in r_dict.items():
+            if k not in ['target', 'seg_id']:
+                main_dict[f'fftr_{k}'] = v
+
+        for k, v in i_dict.items():
+            if k not in ['target', 'seg_id']:
+                main_dict[f'ffti_{k}'] = v
+
+        return main_dict
+
+    def get_features_2(self, train, counter, index_tuple, denoising):
+        """
+        Gets three groups of features: from original data and from reald and imaginary parts of FFT.
+        """
+        x, y, seg_id = self.slice_train_data(train, counter, index_tuple, denoising=denoising)
+
         print(f'seg_id: {seg_id}, x length: {len(x)}, y: {y}')
 
         x = pd.Series(x)
@@ -388,20 +418,23 @@ class FeatureGenerator(object):
                 end += self.chunk_size
             index_tuple_list.append((start, train.shape[0]-1))
 
-            xs = []
-            ys = []
-            seg_ids = []
-            for counter, index_tuple in enumerate(index_tuple_list):
-                x, y, seg_id, = self.slice_train_data(train, counter, index_tuple)
-                if denoising:
-                    xs.append(deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1))
-                else:
-                    xs.append(x)
-                ys.append(y)
-                seg_ids.append(seg_id)
-            del train
+            res = Parallel(n_jobs=self.n_jobs, backend='threading')([delayed(self.get_features_2)(train, counter, index_tuple, denoising) for counter, index_tuple in enumerate(index_tuple_list)])
 
-            res = Parallel(n_jobs=self.n_jobs, backend='threading')([delayed(self.get_features)(list(xs[i]), ys[i], seg_ids[i]) for i in tqdm(range(len(xs)))])
+
+            # xs = []
+            # ys = []
+            # seg_ids = []
+            # for counter, index_tuple in enumerate(index_tuple_list):
+            #     x, y, seg_id, = self.slice_train_data(train, counter, index_tuple)
+            #     if denoising:
+            #         xs.append(deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1))
+            #     else:
+            #         xs.append(x)
+            #     ys.append(y)
+            #     seg_ids.append(seg_id)
+            # del train
+            #
+            # res = Parallel(n_jobs=self.n_jobs, backend='threading')([delayed(self.get_features)(list(xs[i]), ys[i], seg_ids[i]) for i in tqdm(range(len(xs)))])
         else:
             res = Parallel(n_jobs=self.n_jobs,
                            backend='threading')(delayed(self.get_features)(x, y, s)
