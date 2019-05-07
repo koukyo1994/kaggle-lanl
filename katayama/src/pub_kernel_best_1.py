@@ -220,20 +220,21 @@ def main():
     slide_size = 50000
 
     # load featureed datasets
-    train_features = pd.read_csv(FEATURES_DIR / 'lanl-features/train_features.csv')
-    test_features = pd.read_csv(FEATURES_DIR / 'lanl-features/test_features.csv')
+    train_features = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_{slide_size}.csv')
+    test_features = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/test_features.csv')
 
-    train_features_denoised = pd.read_csv(FEATURES_DIR / 'lanl-features/train_features_denoised.csv')
-    test_features_denoised = pd.read_csv(FEATURES_DIR / 'lanl-features/test_features_denoised.csv')
+    train_features_denoised = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_denoised_{slide_size}.csv')
+    test_features_denoised = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/test_features_denoised.csv')
     train_features_denoised.columns = [f'{i}_denoised' for i in train_features_denoised.columns]
     test_features_denoised.columns = [f'{i}_denoised' for i in test_features_denoised.columns]
 
-    y = pd.read_csv(FEATURES_DIR / 'lanl-features/y.csv')
-
+    y = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/y_{slide_size}.csv')
 
     # shape data for model
-    X = pd.concat([train_features, train_features_denoised], axis=1).drop(['seg_id_denoised', 'target_denoised'], axis=1)
-    X_test = pd.concat([test_features, test_features_denoised], axis=1).drop(['seg_id_denoised', 'target_denoised'], axis=1)
+    # X = pd.concat([train_features, train_features_denoised], axis=1).drop(['seg_id_denoised', 'target_denoised'], axis=1)
+    X = pd.concat([train_features, train_features_denoised], axis=1)
+    # X_test = pd.concat([test_features, test_features_denoised], axis=1).drop(['seg_id_denoised', 'target_denoised'], axis=1)
+    X_test = pd.concat([test_features, test_features_denoised], axis=1)
     X = X[:-1]
     y = y[:-1]
 
@@ -267,7 +268,7 @@ def main():
     print(np.mean(result_dict_lgb['scores']))
 
     submission = create_submission_file(result_dict_lgb['prediction'])
-    submission.to_csv(DATA_DIR / 'output/best_kernel/submission.csv')
+    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_{slide_size}.csv')
 
     sub1 = pd.read_csv(FEATURES_DIR / 'lanl-features/submission_1.csv')
     sub1.to_csv('submission_1.csv', index=False)
