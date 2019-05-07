@@ -3,7 +3,7 @@
 - 公開鍵を設定。 `cat ~/.ssh/id_rsa.pub`
 
 ## Connect server via ssh
-ssh katay@34.85.34.9 -i ~/.ssh/id_rsa
+ssh katay@35.213.24.98 -i ~/.ssh/id_rsa
 
 ## Install docker
 sudo apt-get update
@@ -53,3 +53,6 @@ docker run -v $PWD:/tmp/working -w=/tmp/working -p 8888:8888 --rm -it fozzhey/ka
 gcloud projects list
 gcloud config set project [project id]
 gcloud compute instances stop kaggle-instance
+
+
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000.csv ./git/private/kaggle-lanl/katayama/src/data/
