@@ -1,0 +1,4 @@
+src/data/input/*.csv
+*.zip
+
+/src/workspace*
