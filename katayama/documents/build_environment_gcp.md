@@ -55,4 +55,4 @@ gcloud config set project [project id]
 gcloud compute instances stop kaggle-instance
 
 
-scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000.csv ./git/private/kaggle-lanl/katayama/src/data/
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000_top100.csv ./git/private/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000_top100.csv
