@@ -24,16 +24,15 @@ class Feature(metaclass=ABCMeta):
     prefix = ''
     suffix = ''
 
-    def __init__(self, slide_size):
+    def __init__(self, slide_size, series_type='normal'):
         self.name = self.__class__.__name__
         self.train = pd.DataFrame()
         self.test = pd.DataFrame()
         self.slide_size = slide_size
+        self.series_type = series_type
 
-        save_dir = FEATURES_DIR / f'{slide_size}_slides'
-        save_dir.mkdir(parents=True, exist_ok=True)
-        self.train_path = save_dir / f'{self.name}_train.ftr'
-        self.test_path = save_dir / f'{self.name}_test.ftr'
+        self.save_dir = FEATURES_DIR / f'{slide_size}_slides'
+        self.save_dir.mkdir(parents=True, exist_ok=True)
 
         self.test_files = []
         submission = pd.read_csv(DATA_DIR / 'input/sample_submission.csv')
@@ -54,8 +53,11 @@ class Feature(metaclass=ABCMeta):
         raise NotImplementedError
 
     def save(self):
-        self.train.to_feather(str(self.train_path))
-        self.test.to_feather(str(self.test_path))
+        prefix = self.prefix + '_' if self.prefix else ''
+        suffix = '_' + self.suffix if self.suffix else ''
+        name = prefix + self.name + suffix
+        self.train.to_feather(str(self.save_dir / f'{name}_train.ftr'))
+        self.test.to_feather(str(self.save_dir / f'{name}_test.ftr'))
 
     # For lanl
     def create_features(self, train, denoising=False):
@@ -66,7 +68,7 @@ class Feature(metaclass=ABCMeta):
             x, y, seg_id = self.slice_train_data(train, seg_id, index_tuple, denoising=denoising)
 
             # Convert x
-            x = pd.Series(x)
+            x = self.convert(x)
 
             # Initialize
             record = dict()
@@ -99,6 +101,17 @@ class Feature(metaclass=ABCMeta):
 
             records.append(record)
         self.test = pd.DataFrame(records)
+
+    def convert(self, x):
+        x = pd.Series(x)
+        zc = np.fft.fft(x)
+        if self.series_type == 'fftr':
+            x = pd.Series(np.real(zc))
+            self.prefix = 'fftr'
+        elif self.series_type == 'ffti':
+            x = pd.Series(np.imag(zc))
+            self.prefix = 'ffti'
+        return x
 
     def slice_train_data(self, train, seg_id, index_tuple, denoising=False):
         start, end = index_tuple

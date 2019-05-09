@@ -3,7 +3,7 @@
 - 公開鍵を設定。 `cat ~/.ssh/id_rsa.pub`
 
 ## Connect server via ssh
-ssh katay@35.213.24.98 -i ~/.ssh/id_rsa
+ssh katayam@35.213.24.98 -i ~/.ssh/id_rsa
 
 ## Install docker
 sudo apt-get update

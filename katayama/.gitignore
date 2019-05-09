@@ -1,4 +1,5 @@
 src/data/input/*.csv
 *.zip
+.DS_Store
 
 /src/workspace*
