@@ -3,7 +3,7 @@
 - 公開鍵を設定。 `cat ~/.ssh/id_rsa.pub`
 
 ## Connect server via ssh
-ssh katay@35.213.24.98 -i ~/.ssh/id_rsa
+ssh katayam@35.213.24.98 -i ~/.ssh/id_rsa
 
 ## Install docker
 sudo apt-get update
@@ -60,4 +60,4 @@ scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/fea
 scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/features/lanl-features-50000/test_features_denoised.csv ./katayama/src/features/lanl-features-50000/
 scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/features/lanl-features-50000/y_50000.csv ./katayama/src/features/lanl-features-50000/
 
-scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000.csv ./git/private/kaggle-lanl/katayama/src/data/
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000_top100.csv ./git/private/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000_top100.csv
