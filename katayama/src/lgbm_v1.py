@@ -154,6 +154,11 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
 
     return result_dict, feature_importance
 
+def create_submission_file(y_pred):
+    submission = pd.read_csv(DATA_DIR / 'input/sample_submission.csv', index_col='seg_id')
+    submission['time_to_failure'] = y_pred
+    return submission
+
 def make_log_filename():
     try:
         filename = os.path.basename(__file__) # with .py file
@@ -228,14 +233,69 @@ def main():
               'colsample_bytree': 0.1
               }
 
-    result_dict_lgb = train_model_regression(X=X,
-                                             X_test=X_test,
-                                             y=y,
-                                             params=params,
-                                             folds=folds,
-                                             plot_feature_importance=False
-                                             )
+    result_dict_lgb, importances = train_model_regression(X=X,
+                                                          X_test=X_test,
+                                                          y=y,
+                                                          params=params,
+                                                          folds=folds,
+                                                          plot_feature_importance=True
+                                                          )
 
+    # 50: 1.8366
+    # 100: 1.7984
+    # 150: 1.8066
+    # 200: 1.8303
+    # 300: 1.8620
+    # 400: 1.8777071313461096
+    # 500: 1.8909150869718083
+    # 600: 1.8978831882822438
+    # 700: 1.8972395274895395
+    # 800: 1.9002562975617494
+    # 900: 1.9045408677023843
+    # 1000: 1.906862299102323
+    # 1100: 1.906375645153852
+    # 1200: 1.9072291715875067
+    # 1300: 1.9091818184570983
+    # 1400: 1.9121951083021045
+    # 1500: 1.9134705962098237
+    # none: 1.9147
+    importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
+
+    n_tops = [1000, 1100, 1200, 1300, 1400, 1500]
+    cv_means_dict = {}
+    for n_top in n_tops:
+        # n_top = n_tops[0]
+        top_features = importances.iloc[:n_top, :]['feature'].tolist()
+
+        X_selected = X[top_features]
+        X_test_selected = X_test[top_features]
+
+        result_dict_lgb_selected, importances_selected = train_model_regression(X=X_selected,
+                                                                                X_test=X_test_selected,
+                                                                                y=y,
+                                                                                params=params,
+                                                                                folds=folds,
+                                                                                plot_feature_importance=True
+                                                                                )
+        cv_means_dict[n_top] = np.mean(result_dict_lgb_selected['scores'])
+
+
+    n_top = 1000
+    top_features = importances.iloc[:n_top, :]['feature'].tolist()
+
+    X_selected = X[top_features]
+    X_test_selected = X_test[top_features]
+
+    result_dict_lgb_selected, importances_selected = train_model_regression(X=X_selected,
+                                                                            X_test=X_test_selected,
+                                                                            y=y,
+                                                                            params=params,
+                                                                            folds=folds,
+                                                                            plot_feature_importance=True
+                                                                            )
+
+    submission = create_submission_file(result_dict_lgb_selected['prediction'])
+    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_{slide_size}_top{n_top}.csv')
 
 if __name__ == '__main__':
     main()

@@ -54,5 +54,10 @@ gcloud projects list
 gcloud config set project [project id]
 gcloud compute instances stop kaggle-instance
 
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/features/lanl-features-50000/train_features.csv ./katayama/src/features/lanl-features-50000/
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/features/lanl-features-50000/train_features_denoised_50000.csv ./katayama/src/features/lanl-features-50000/
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/features/lanl-features-50000/test_features.csv ./katayama/src/features/lanl-features-50000/
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/features/lanl-features-50000/test_features_denoised.csv ./katayama/src/features/lanl-features-50000/
+scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/features/lanl-features-50000/y_50000.csv ./katayama/src/features/lanl-features-50000/
 
 scp -i ~/.ssh/id_rsa katay@35.213.24.98:/home/katay/kaggle-lanl/katayama/src/data/output/best_kernel/submission_50000.csv ./git/private/kaggle-lanl/katayama/src/data/
