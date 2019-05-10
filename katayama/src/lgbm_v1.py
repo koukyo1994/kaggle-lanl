@@ -22,7 +22,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # os.chdir('./src')
 from paths import *
-import utils.log_functions as log
+import util.log_functions as log
 
 # %load_ext autoreload
 # %autoreload 2
@@ -189,7 +189,7 @@ def get_and_validate_args(args):
 
 def main():
     # Arguments
-    # slide_size = 50000; n_fold = 5; random_state = 11
+    # slide_size = 30000; n_fold = 5; random_state = 11
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
     version = '1-0'
@@ -241,6 +241,7 @@ def main():
                                                           plot_feature_importance=True
                                                           )
 
+    # slide_size is 50000
     # 50: 1.8366
     # 100: 1.7984
     # 150: 1.8066
@@ -259,9 +260,30 @@ def main():
     # 1400: 1.9121951083021045
     # 1500: 1.9134705962098237
     # none: 1.9147
+
+    # slide_size is 30000
+    # 50: 1.3826160706982615,
+    # 100: 1.3506394890340707
+    # 200: 1.417127967473919
+    # 300: 1.460369540678971
+    # 400: 1.5211503554425776
+    # 500: 1.5764078675105528
+    # 600: 1.6168063547473277
+    # 700: 1.6418688473140932
+    # 800: 1.6638082810362012
+    # 900: 1.6759969727409225
+    # 1000: 1.6866842691105028
+    # 1100: 1.6987258027444294
+    # 1200: 1.7023461551193222
+    # 1300: 1.7046762609584551
+    # 1400: 1.7102603202849722
+    # 1500: 1.713613196285221
+    # none:
+
+
     importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
 
-    n_tops = [1000, 1100, 1200, 1300, 1400, 1500]
+    n_tops = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500]
     cv_means_dict = {}
     for n_top in n_tops:
         # n_top = n_tops[0]
@@ -280,7 +302,8 @@ def main():
         cv_means_dict[n_top] = np.mean(result_dict_lgb_selected['scores'])
 
 
-    n_top = 1000
+    n_top = 1000 # slide_sizeが50000の場合
+    # n_top = 1000 # slide_sizeが30000の場合
     top_features = importances.iloc[:n_top, :]['feature'].tolist()
 
     X_selected = X[top_features]

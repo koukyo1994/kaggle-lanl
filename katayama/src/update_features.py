@@ -7,7 +7,7 @@ import pandas as pd
 from paths import *
 import features.denoising as deno
 from features.base import Feature
-import utils.util_functions as util
+import util.util_functions as util
 
 # %load_ext autoreload
 # %autoreload 2
@@ -93,21 +93,35 @@ class Tsfresh(Feature):
 
 def main():
     # Argument
-    slide_size = 150000
+    slide_size = 50000
     overwrite = False
 
     # Laod train data
-    train = util.read_train_data(nrows=1000000)
-    # x = pd.Series(train['acoustic_data'].iloc[:150000].values)
-
-    basicStats = BasicStats(slide_size, series_type='ffti')
-    basicStats.create_features(train)
-    basicStats.save()
+    train = util.read_train_data()
 
     tsfresh = Tsfresh(slide_size)
-    tsfresh.create_features(train)
+    tsfresh.run(train=train)
     tsfresh.save()
 
+    tsfresh = Tsfresh(slide_size, series_type='fftr')
+    tsfresh.run(train=train)
+    tsfresh.save()
+
+    tsfresh = Tsfresh(slide_size, series_type='ffti')
+    tsfresh.run(train=train)
+    tsfresh.save()
+
+    tsfresh = Tsfresh(slide_size, denoising=True)
+    tsfresh.run(train=train)
+    tsfresh.save()
+
+    tsfresh = Tsfresh(slide_size, series_type='fftr', denoising=True)
+    tsfresh.run(train=train)
+    tsfresh.save()
+
+    tsfresh = Tsfresh(slide_size, series_type='ffti', denoising=True)
+    tsfresh.run(train=train)
+    tsfresh.save()
 
 
 if __name__ == '__main__':
