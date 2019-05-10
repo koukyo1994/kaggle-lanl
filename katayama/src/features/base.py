@@ -8,8 +8,10 @@ import inspect
 
 import numpy as np
 import pandas as pd
+from tqdm import tqdm
 
 from paths import *
+import features.denoising as deno
 
 
 @contextmanager
@@ -24,12 +26,13 @@ class Feature(metaclass=ABCMeta):
     prefix = ''
     suffix = ''
 
-    def __init__(self, slide_size, series_type='normal'):
+    def __init__(self, slide_size, series_type='normal', denoising=False):
         self.name = self.__class__.__name__
         self.train = pd.DataFrame()
         self.test = pd.DataFrame()
         self.slide_size = slide_size
         self.series_type = series_type
+        self.denoising = denoising
 
         self.save_dir = FEATURES_DIR / f'{slide_size}_slides'
         self.save_dir.mkdir(parents=True, exist_ok=True)
@@ -60,12 +63,16 @@ class Feature(metaclass=ABCMeta):
         self.test.to_feather(str(self.save_dir / f'{name}_test.ftr'))
 
     # For lanl
-    def create_features(self, train, denoising=False):
+    def create_features(self, train):
         index_tuple_list = self.create_index_tuple(self.slide_size, train.shape[0])
 
         records = []
-        for seg_id, index_tuple in enumerate(index_tuple_list):
-            x, y, seg_id = self.slice_train_data(train, seg_id, index_tuple, denoising=denoising)
+        for seg_id, index_tuple in tqdm(enumerate(index_tuple_list)):
+            x, y, seg_id = self.slice_train_data(train, seg_id, index_tuple)
+
+            if self.denoising:
+                self.suffix = 'denoised'
+                x = deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1)
 
             # Convert x
             x = self.convert(x)
@@ -82,14 +89,16 @@ class Feature(metaclass=ABCMeta):
         self.train = pd.DataFrame(records)
 
         records = []
-        for seg_id, f in self.test_files[:10]:
+        for seg_id, f in tqdm(self.test_files):
             df = pd.read_csv(f, dtype={'acoustic_data': np.float64})
             x = df.acoustic_data.values[-self.slide_size:]
-            if denoising:
+
+            if self.denoising:
+                self.suffix = 'denoised'
                 x = deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1)
 
             # Convert x
-            x = pd.Series(x)
+            x = self.convert(x)
 
             # Initialize
             record = dict()

@@ -20,7 +20,9 @@ TRAIN_DATA_LENGTH = config['data']['TRAIN_DATA_LENGTH']
 def main():
     n_jobs = -1
     chunk_size = 30000
-    denoising = False
+    denoising = True
+
+    print(n_jobs, chunk_size, denoising)
 
     feature_dir_name = f'lanl-features-{chunk_size}'
 
