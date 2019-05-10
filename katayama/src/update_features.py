@@ -73,9 +73,6 @@ class Tsfresh(Feature):
         record['last_loc_min'] = feature_calculators.last_location_of_minimum(x)
         record['last_loc_max'] = feature_calculators.last_location_of_maximum(x)
 
-        for lag in lags:
-            record[f'time_rev_asym_stat_{lag}'] = feature_calculators.time_reversal_asymmetry_statistic(x, lag)
-
         for coeff, attr in product([1, 2, 3, 4, 5], ['real', 'imag', 'angle']):
             record[f'fft_{coeff}_{attr}'] = list(feature_calculators.fft_coefficient(x, [{'coeff': coeff, 'attr': attr}]))[0][1]
 

@@ -3,3 +3,4 @@ src/data/input/*.csv
 .DS_Store
 
 /src/workspace*
+/src/features/*/*.ftr
