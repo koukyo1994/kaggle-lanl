@@ -6,6 +6,7 @@ import builtins
 import datetime
 import warnings
 from pathlib import Path
+from itertools import product
 
 import numpy as np
 import pandas as pd
@@ -22,7 +23,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # os.chdir('./src')
 from paths import *
-import util.log_functions as log
+import utils.log_functions as log
 
 # %load_ext autoreload
 # %autoreload 2
@@ -154,11 +155,6 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
 
     return result_dict, feature_importance
 
-def create_submission_file(y_pred):
-    submission = pd.read_csv(DATA_DIR / 'input/sample_submission.csv', index_col='seg_id')
-    submission['time_to_failure'] = y_pred
-    return submission
-
 def make_log_filename():
     try:
         filename = os.path.basename(__file__) # with .py file
@@ -189,10 +185,10 @@ def get_and_validate_args(args):
 
 def main():
     # Arguments
-    # slide_size = 30000; n_fold = 5; random_state = 11
+    # slide_size = 50000; n_fold = 5; random_state = 11
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
-    version = '1-0'
+    version = '1-1'
 
     # Define logger
     global logger
@@ -207,10 +203,36 @@ def main():
     train_features_denoised.columns = [f'{i}_denoised' for i in train_features_denoised.columns]
     test_features_denoised.columns = [f'{i}_denoised' for i in test_features_denoised.columns]
 
+    # Laod additional features
+    feature_dict = {
+        'Tsfresh': {
+            'prefix': ['', 'fftr_', 'ffti_'],
+            'suffix': ['', '_denoised']
+        }
+    }
+
+    train_features_add = pd.DataFrame()
+    test_features_add = pd.DataFrame()
+    for feature in feature_dict.keys():
+        # feature = list(feature_dict.keys())[0]
+        prefixs = feature_dict[feature]['prefix']
+        surfixs = feature_dict[feature]['suffix']
+
+        for prefix, suffix in product(prefixs, surfixs):
+            sub_train_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_train.ftr')
+            # 不要な特徴量が入ってるので削除
+            sub_train_features_add = sub_train_features_add.drop([f'{prefix}time_rev_asym_stat_10{suffix}', f'{prefix}time_rev_asym_stat_100{suffix}', f'{prefix}var_larger_than_std_dev{suffix}', f'{prefix}seg_id{suffix}'], axis=1)
+            train_features_add = pd.concat([train_features_add, sub_train_features_add], axis=1)
+
+            sub_test_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_test.ftr')
+            # 不要な特徴量が入ってるので削除
+            sub_test_features_add = sub_test_features_add.drop([f'{prefix}time_rev_asym_stat_10{suffix}', f'{prefix}time_rev_asym_stat_100{suffix}'], axis=1)
+            test_features_add = pd.concat([test_features_add, sub_test_features_add], axis=1)
+
     y = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/y_{slide_size}.csv')
 
-    X = pd.concat([train_features, train_features_denoised], axis=1)
-    X_test = pd.concat([test_features, test_features_denoised], axis=1)
+    X = pd.concat([train_features, train_features_denoised, train_features_add], axis=1)
+    X_test = pd.concat([test_features, test_features_denoised, test_features_add], axis=1)
 
     X = X[:-1]
     y = y[:-1]
@@ -233,53 +255,13 @@ def main():
               'colsample_bytree': 0.1
               }
 
-    result_dict_lgb, importances = train_model_regression(X=X,
-                                                          X_test=X_test,
-                                                          y=y,
-                                                          params=params,
-                                                          folds=folds,
-                                                          plot_feature_importance=True
-                                                          )
-
-    # slide_size is 50000
-    # 50: 1.8366
-    # 100: 1.7984
-    # 150: 1.8066
-    # 200: 1.8303
-    # 300: 1.8620
-    # 400: 1.8777071313461096
-    # 500: 1.8909150869718083
-    # 600: 1.8978831882822438
-    # 700: 1.8972395274895395
-    # 800: 1.9002562975617494
-    # 900: 1.9045408677023843
-    # 1000: 1.906862299102323
-    # 1100: 1.906375645153852
-    # 1200: 1.9072291715875067
-    # 1300: 1.9091818184570983
-    # 1400: 1.9121951083021045
-    # 1500: 1.9134705962098237
-    # none: 1.9147
-
-    # slide_size is 30000
-    # 50: 1.3826160706982615,
-    # 100: 1.3506394890340707
-    # 200: 1.417127967473919
-    # 300: 1.460369540678971
-    # 400: 1.5211503554425776
-    # 500: 1.5764078675105528
-    # 600: 1.6168063547473277
-    # 700: 1.6418688473140932
-    # 800: 1.6638082810362012
-    # 900: 1.6759969727409225
-    # 1000: 1.6866842691105028
-    # 1100: 1.6987258027444294
-    # 1200: 1.7023461551193222
-    # 1300: 1.7046762609584551
-    # 1400: 1.7102603202849722
-    # 1500: 1.713613196285221
-    # none:
-
+    result_dict_lgb = train_model_regression(X=X,
+                                             X_test=X_test,
+                                             y=y,
+                                             params=params,
+                                             folds=folds,
+                                             plot_feature_importance=False
+                                             )
 
     importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
 
