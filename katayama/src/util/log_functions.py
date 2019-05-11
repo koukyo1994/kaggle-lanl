@@ -2,9 +2,15 @@ import os
 import logging
 import datetime
 import codecs
+import json
 import configparser
 from logging import getLogger, StreamHandler, FileHandler, shutdown
 
+from paths import *
+
+# Import config
+with open(CONF_DIR / 'config.json', 'r') as f:
+    config = json.load(f)
 
 loggers = {} # type: Dict[str, logging.Logger]
 def set_logger(name: str, log_path:str)->logging.Logger:
