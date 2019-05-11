@@ -155,6 +155,11 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
 
     return result_dict, feature_importance
 
+def create_submission_file(y_pred):
+    submission = pd.read_csv(DATA_DIR / 'input/sample_submission.csv', index_col='seg_id')
+    submission['time_to_failure'] = y_pred
+    return submission
+
 def make_log_filename():
     try:
         filename = os.path.basename(__file__) # with .py file
@@ -221,7 +226,7 @@ def main():
         for prefix, suffix in product(prefixs, surfixs):
             sub_train_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_train.ftr')
             # 不要な特徴量が入ってるので削除
-            sub_train_features_add = sub_train_features_add.drop([f'{prefix}time_rev_asym_stat_10{suffix}', f'{prefix}time_rev_asym_stat_100{suffix}', f'{prefix}var_larger_than_std_dev{suffix}', f'{prefix}seg_id{suffix}'], axis=1)
+            sub_train_features_add = sub_train_features_add.drop([f'{prefix}time_rev_asym_stat_10{suffix}', f'{prefix}time_rev_asym_stat_100{suffix}', f'{prefix}var_larger_than_std_dev{suffix}', f'{prefix}seg_id{suffix}', f'{prefix}target{suffix}'], axis=1)
             train_features_add = pd.concat([train_features_add, sub_train_features_add], axis=1)
 
             sub_test_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_test.ftr')
@@ -255,16 +260,33 @@ def main():
               'colsample_bytree': 0.1
               }
 
-    result_dict_lgb = train_model_regression(X=X,
-                                             X_test=X_test,
-                                             y=y,
-                                             params=params,
-                                             folds=folds,
-                                             plot_feature_importance=False
-                                             )
+    result_dict_lgb, importances = train_model_regression(X=X,
+                                                          X_test=X_test,
+                                                          y=y,
+                                                          params=params,
+                                                          folds=folds,
+                                                          plot_feature_importance=True
+                                                          )
 
     importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
 
+
+    # 50: 1.848766011411793
+    # 100: 1.81299098135183
+    # 200: 1.8154912902707327
+    # 300: 1.8528059266115808
+    # 400: 1.8679691889090442
+    # 500: 1.881034253687152
+    # 600: 1.8878972346683145
+    # 700: 1.8939860545505476
+    # 800: 1.9000404620795657
+    # 900: 1.9060272804428213
+    # 1000: 1.9067553766476604
+    # 1100: 1.9062819749403608
+    # 1200: 1.9091694161831214
+    # 1300: 1.9117402099692768
+    # 1400: 1.9126346978022748
+    # 1500: 1.9130733164282883
     n_tops = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500]
     cv_means_dict = {}
     for n_top in n_tops:
@@ -300,7 +322,7 @@ def main():
                                                                             )
 
     submission = create_submission_file(result_dict_lgb_selected['prediction'])
-    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_{slide_size}_top{n_top}.csv')
+    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_lgbm{version}_{slide_size}_top{n_top}.csv')
 
 if __name__ == '__main__':
     main()

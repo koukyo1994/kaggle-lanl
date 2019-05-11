@@ -79,7 +79,6 @@ class Feature(metaclass=ABCMeta):
 
             # Initialize
             record = dict()
-            record['target'] = y
             record['seg_id'] = seg_id
 
             # Create features
