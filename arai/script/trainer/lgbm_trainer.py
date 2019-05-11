@@ -64,7 +64,7 @@ class LGBMTrainer(AbstractTrainer):
 
     def _save_config(self):
         path = self.path
-        del self.logger, self.fold, self.trees, self.path
+        del self.logger, self.fold, self.path
 
         save_dir = path / "trainer"
         save_dir.mkdir(exist_ok=True, parents=True)
