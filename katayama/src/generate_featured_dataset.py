@@ -57,7 +57,7 @@ def load_additional_featured_dataset(feature_dict, slide_size):
 
     return train_features_add, test_features_add
 
-def parsllel_shuffle_argumentation(df, aug_feature_ratio, n_jobs):
+def parallel_shuffle_argumentation(df, aug_feature_ratio, n_jobs):
     # n_jobs = 4
     # df = X.iloc[:10000, :]
     th_indices = list(range(0, int(df.shape[0]), int(df.shape[0]/n_jobs)))
@@ -182,7 +182,7 @@ def main():
     # Shuffed argumentation
     if aug_feature_ratio != 0:
         logger.info(f'Started Shuffle argumentation. Before shape:{X.shape}, aug_feature_ratio:{aug_feature_ratio}')
-        X_arg = parsllel_shuffle_argumentation(X, aug_feature_ratio/100, n_jobs)
+        X_arg = parallel_shuffle_argumentation(X, aug_feature_ratio/100, n_jobs)
         X = X.append(X_arg)
 
         y = y.append(y)
