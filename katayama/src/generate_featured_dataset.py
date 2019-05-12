@@ -69,6 +69,7 @@ def parsllel_shuffle_argumentation(df, aug_feature_ratio, n_jobs):
 
     df_aug = pd.DataFrame()
     for id, sub_df_aug in res:
+        print(f'argumented sub df\'s id:{id}')
         df_aug = df_aug.append(sub_df_aug)
 
     return df_aug
@@ -114,15 +115,17 @@ def define_args():
     parser.add_argument('version', type=int)
     parser.add_argument('slide_size', type=int)
     parser.add_argument('aug_feature_ratio', type=int)
+    parser.add_argument('n_jobs', type=int)
 
-    return parser
+    return parser.parse_args()
 
 def get_and_validate_args(args):
     version = args.version
     slide_size = args.slide_size
     aug_feature_ratio = args.aug_feature_ratio
+    n_jobs = args.n_jobs
 
-    return version, slide_size, aug_feature_ratio
+    return version, slide_size, aug_feature_ratio, n_jobs
 
 def make_log_filename():
     try:
@@ -137,7 +140,9 @@ def make_log_filename():
 def main():
     # Arguments
     # version = 2; slide_size = 50000; aug_feature_ratio = 90
-    slide_size, n_fold, random_state = get_and_validate_args(args)
+
+    args = define_args()
+    version, slide_size, aug_feature_ratio, n_jobs = get_and_validate_args(args)
 
     # Define logger
     global logger
@@ -177,7 +182,7 @@ def main():
     # Shuffed argumentation
     if aug_feature_ratio != 0:
         logger.info(f'Started Shuffle argumentation. Before shape:{X.shape}, aug_feature_ratio:{aug_feature_ratio}')
-        X_arg = shuffle_argumentation(X, aug_feature_ratio/100)
+        X_arg = parsllel_shuffle_argumentation(X, aug_feature_ratio/100, n_jobs)
         X = X.append(X_arg)
 
         y = y.append(y)
