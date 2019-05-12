@@ -7,6 +7,7 @@ import pandas as pd
 from paths import *
 import features.denoising as deno
 from features.base import Feature
+from features.Tsfresh2 import Tsfresh2
 import util.util_functions as util
 
 # %load_ext autoreload
@@ -89,6 +90,23 @@ class Tsfresh(Feature):
         return record
 
 def main():
+    # Argument
+    slide_size = 50000
+    overwrite = False
+
+    # Laod train data
+    train = util.read_train_data()
+
+    generater = Tsfresh2(slide_size, series_type='fftr')
+    generater.run(train=train)
+    generater.save()
+
+    generater = Tsfresh2(slide_size, series_type='fftr', denoising=True)
+    generater.run(train=train)
+    generater.save()
+
+
+def main_past():
     # Argument
     slide_size = 50000
     overwrite = False
