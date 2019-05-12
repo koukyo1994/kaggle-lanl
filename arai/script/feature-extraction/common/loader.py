@@ -10,3 +10,9 @@ def data_generator(data_dir: Path):
             continue
         else:
             yield data
+
+
+def test_generator(data_dir: Path):
+    for path in data_dir.iterdir():
+        data = pd.read_csv(path)
+        yield data, path

@@ -57,3 +57,18 @@ def calculate_signal_features(ts):
         else:
             features.append(feature)
     return features
+
+
+def signal_features_dict(ts):
+    features = {}
+    funcs = [
+        np.mean, np.std, stats.kurtosis, get_peak_features, signal_entropy,
+        detailed_coeffs_entropy, bucketed_entropy
+    ]
+    for f in funcs:
+        feature = f(ts)
+        if isinstance(feature, dict):
+            features.update(feature)
+        else:
+            features[f"{f.__name__}"] = feature
+    return features

@@ -81,7 +81,7 @@ def make_log_filename():
 
 def main():
     # Arguments
-    # version = 1; slide_size = 50000; aug_feature_ratio = 0.5
+    # version = 1; slide_size = 50000; aug_feature_ratio = 50
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
     # Define logger
@@ -98,6 +98,14 @@ def main():
     train_features_denoised.columns = [f'{i}_denoised' for i in train_features_denoised.columns]
     test_features_denoised.columns = [f'{i}_denoised' for i in test_features_denoised.columns]
 
+    # Load additional features
+    feature_dict = {
+        'Tsfresh': {
+            'prefix': ['', 'fftr_', 'ffti_'],
+            'suffix': ['', '_denoised']
+        }
+    }
+
     # Concat features
     X = pd.concat([train_features, train_features_denoised], axis=1)[:-1]
     y = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/y_{slide_size}.csv')[:-1]
@@ -106,17 +114,19 @@ def main():
     # Shuffed argumentation
     if aug_feature_ratio != 0:
         logger.info('Started Shuffle argumentation. Before shape:{X.shape}')
-        X_arg = shuffle_argumentation(X, aug_feature_ratio)
+        X_arg = shuffle_argumentation(X, aug_feature_ratio/100)
         X = X.append(X_arg)
+
+        y = y.append(y)
         logger.info('Finished Shuffle argumentation. After shape:{X.shape}')
 
     # Save train dataset
     train = pd.concat([X, y], axis=1)
-    train.to_csv(DATA_DIR/'input'/'features'/f'featued_train_ver{version}_{slide_size}_{aug_feature_ratio}.csv')
+    train.to_csv(DATA_DIR/'input'/'featured'/f'featured_train_ver{version}_{slide_size}_{aug_feature_ratio}.csv', index=False)
 
     # Save test dataset
     test = pd.concat([test_features, test_features_denoised], axis=1)
-    test.to_csv(DATA_DIR/'input'/'features'/f'featued_test_ver{version}_{slide_size}_{aug_feature_ratio}.csv')
+    test.to_csv(DATA_DIR/'input'/'featured'/f'featured_test_ver{version}_{slide_size}_{aug_feature_ratio}.csv', index=False)
 
     return
 
