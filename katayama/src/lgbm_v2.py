@@ -211,10 +211,10 @@ def get_and_validate_args(args):
 
 def main():
     # Arguments
-    # data_ver = 1; slide_size = 50000; aug_feature_ratio = 90; n_fold = 5; random_state = 11; early_stopping_rounds = 5
+    # data_ver = 2; slide_size = 50000; aug_feature_ratio = 90; n_fold = 5; random_state = 11; early_stopping_rounds = 3
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
-    model_ver = 2
+    model_ver = 1
 
     # Define logger
     global logger
@@ -225,8 +225,12 @@ def main():
     test = pd.read_csv(DATA_DIR/'input'/'featured'/f'featured_test_ver{data_ver}_{slide_size}_{aug_feature_ratio}.csv')
 
     y_train = train[['target']]
-    X_train = train.drop('target', axis=1)
-    X_test = test.copy()
+    X_train = train.drop(['target', 'seg_id'], axis=1)
+
+    drop_columns = list(filter(lambda x:x.find('target') != -1, X_test.columns))
+    X_test = X_test.drop(drop_columns+['seg_id'], axis=1)
+
+    logger.info(f'X_train:{X_train.shape}, y_train:{y_train.shape}, X_test:{X_test.shape}')
 
     folds = KFold(n_splits=n_fold, shuffle=True, random_state=random_state)
 
@@ -257,77 +261,82 @@ def main():
 
     importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
 
+    submission = create_submission_file(result_dict_lgb['prediction'])
+    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_lgbm_dver{data_ver}_{slide_size}slide_topall_corrred0_esr{early_stopping_rounds}_sharg{aug_feature_ratio}.csv')
 
-    train_features = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_{slide_size}.csv')
-    train_features_denoised = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_denoised_{slide_size}.csv')
-    train_features_denoised.columns = [f'{i}_denoised' for i in train_features_denoised.columns]
-    th = 0.975
-    retained_features = drop_high_cc_features(pd.concat([train_features, train_features_denoised], axis=1)[:-1], th)
-    X_train_red = X_train[retained_features]
-    X_test_red = X_test[retained_features]
+    # train_features = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_{slide_size}.csv')
+    # train_features_denoised = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_denoised_{slide_size}.csv')
+    # train_features_denoised.columns = [f'{i}_denoised' for i in train_features_denoised.columns]
+    # th = 0.975
+    # retained_features = drop_high_cc_features(pd.concat([train_features, train_features_denoised], axis=1)[:-1], th)
+    # X_train_red = X_train[retained_features]
+    # X_test_red = X_test[retained_features]
+    #
+    # result_dict_lgb_red, importances_red = train_model_regression(X=X_train_red,
+    #                                                       X_test=X_test_red,
+    #                                                       y=y_train,
+    #                                                       params=params,
+    #                                                       folds=folds,
+    #                                                       plot_feature_importance=True,
+    #                                                       early_stopping_rounds=early_stopping_rounds
+    #                                                       )
+    #
+    # importances_red = importances_red[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
+    #
+    # submission = create_submission_file(result_dict_lgb_red['prediction'])
+    # submission.to_csv(DATA_DIR / f'output/best_kernel/submission_lgbm_dver{data_ver}_{slide_size}slide_topall_corrred1_esr{early_stopping_rounds}_sharg{aug_feature_ratio}.csv')
+    #
+    # # 100: 2.3828563944616645
+    # # 200: 2.3679517421261935
+    # # 300: 2.3789489122758023
+    # # 400: 2.3918688865133584
+    # # 500: 2.4054866885002766
+    # # 600: 2.4136703579330736
+    # # 700: 2.4161196546293704
+    # # 800: 2.4199258041886225
+    # # 900: 2.422044245630842
+    # # 1000: 2.4314562691205506
+    # n_tops = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
+    # cv_means_dict = {}
+    # for n_top in n_tops:
+    #     # n_top = n_tops[0]
+    #     top_features = importances_red.iloc[:n_top, :]['feature'].tolist()
+    #
+    #     X_train_selected = X_train_red[top_features]
+    #     X_test_selected = X_test_red[top_features]
+    #
+    #     result_dict_lgb_selected, importances_selected = train_model_regression(X=X_train_selected,
+    #                                                                             X_test=X_test_selected,
+    #                                                                             y=y_train,
+    #                                                                             params=params,
+    #                                                                             folds=folds,
+    #                                                                             plot_feature_importance=True,
+    #                                                                             early_stopping_rounds=early_stopping_rounds
+    #                                                                             )
+    #     cv_means_dict[n_top] = np.mean(result_dict_lgb_selected['scores'])
+    #     print(f'n_top:{n_top}, cv mean:{np.mean(result_dict_lgb_selected["scores"])}')
 
-    result_dict_lgb_red, importances_red = train_model_regression(X=X_train_red,
-                                                          X_test=X_test_red,
-                                                          y=y_train,
-                                                          params=params,
-                                                          folds=folds,
-                                                          plot_feature_importance=True,
-                                                          early_stopping_rounds=early_stopping_rounds
-                                                          )
 
-    importances_red = importances_red[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
+    n_top = 1000 # slide_sizeが50000の場合
+    top_features = importances.iloc[:n_top, :]['feature'].tolist()
+    # top_features = importances_red.iloc[:n_top, :]['feature'].tolist()
 
-    submission = create_submission_file(result_dict_lgb_red['prediction'])
-    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_lgbm_dver{data_ver}_{slide_size}slide_topall_corrred1_esr{early_stopping_rounds}_sharg{aug_feature_ratio}.csv')
-
-    # 100: 2.3828563944616645
-    # 200: 2.3679517421261935
-    # 300: 2.3789489122758023
-    # 400: 2.3918688865133584
-    # 500: 2.4054866885002766
-    # 600: 2.4136703579330736
-    # 700: 2.4161196546293704
-    # 800: 2.4199258041886225
-    # 900: 2.422044245630842
-    # 1000: 2.4314562691205506
-    n_tops = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
-    cv_means_dict = {}
-    for n_top in n_tops:
-        # n_top = n_tops[0]
-        top_features = importances_red.iloc[:n_top, :]['feature'].tolist()
-
-        X_train_selected = X_train_red[top_features]
-        X_test_selected = X_test_red[top_features]
-
-        result_dict_lgb_selected, importances_selected = train_model_regression(X=X_train_selected,
-                                                                                X_test=X_test_selected,
-                                                                                y=y_train,
-                                                                                params=params,
-                                                                                folds=folds,
-                                                                                plot_feature_importance=True,
-                                                                                early_stopping_rounds=early_stopping_rounds
-                                                                                )
-        cv_means_dict[n_top] = np.mean(result_dict_lgb_selected['scores'])
-        print(f'n_top:{n_top}, cv mean:{np.mean(result_dict_lgb_selected["scores"])}')
-
-
-    n_top = 600 # slide_sizeが50000の場合
-    # n_top = 1000 # slide_sizeが30000の場合
-    top_features = importances_red.iloc[:n_top, :]['feature'].tolist()
-
-    X_train_selected = X_train_red[top_features]
-    X_test_selected = X_test_red[top_features]
+    X_train_selected = X_train[top_features]
+    X_test_selected = X_test[top_features]
+    # X_train_selected = X_train_red[top_features]
+    # X_test_selected = X_test_red[top_features]
 
     result_dict_lgb_selected, importances_selected = train_model_regression(X=X_train_selected,
                                                                             X_test=X_test_selected,
                                                                             y=y_train,
                                                                             params=params,
                                                                             folds=folds,
-                                                                            plot_feature_importance=True
+                                                                            plot_feature_importance=True,
+                                                                            early_stopping_rounds=early_stopping_rounds
                                                                             )
 
     submission = create_submission_file(result_dict_lgb_selected['prediction'])
-    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_lgbm_dver{data_ver}_{slide_size}slide_top{n_top}_corrred1_esr{early_stopping_rounds}_sharg{aug_feature_ratio}.csv')
+    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_lgbm_dver{data_ver}_{slide_size}slide_top{n_top}_corrred0_esr{early_stopping_rounds}_sharg{aug_feature_ratio}.csv')
 
 
 if __name__ == '__main__':
