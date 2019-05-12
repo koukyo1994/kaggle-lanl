@@ -5,6 +5,7 @@ import json
 import datetime
 import warnings
 from pathlib import Path
+from itertools import product
 
 import pandas as pd
 import numpy as np
@@ -19,6 +20,41 @@ import util.log_functions as log
 # %load_ext autoreload
 # %autoreload 2
 
+
+def load_additional_featured_dataset(feature_dict, slide_size):
+    train_features_add = pd.DataFrame()
+    test_features_add = pd.DataFrame()
+    for feature in feature_dict.keys():
+        # feature = list(feature_dict.keys())[0]
+
+        prefixs = feature_dict[feature]['prefix']
+        suffixs = feature_dict[feature]['suffix']
+
+        for prefix, suffix in product(prefixs, suffixs):
+            # prefix, suffix = list(product(prefixs, suffixs))[1]
+
+            sub_train_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_train.ftr')
+            # targetをドロップ
+            if feature == 'Tsfresh':
+                sub_train_features_add = sub_train_features_add.drop([f'{prefix}target{suffix}'], axis=1)
+            # seg_idのカラム名を修正
+            sub_train_features_add = sub_train_features_add.rename(columns={f'{prefix}seg_id{suffix}':'seg_id'})
+
+            if train_features_add.shape[1] == 0:
+                train_features_add = sub_train_features_add
+            else:
+                train_features_add = pd.merge(train_features_add, sub_train_features_add, on='seg_id', how='outer')
+
+            sub_test_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_test.ftr')
+            # seg_idのカラム名を修正
+            sub_test_features_add = sub_test_features_add.rename(columns={f'{prefix}seg_id{suffix}':'seg_id'})
+
+            if test_features_add.shape[1] == 0:
+                test_features_add = sub_test_features_add
+            else:
+                test_features_add = pd.merge(test_features_add, sub_test_features_add, on='seg_id', how='outer')
+
+    return train_features_add, test_features_add
 
 def shuffle_argumentation(df, aug_feature_ratio):
     # aug_feature_ratio = 0.5
@@ -81,7 +117,7 @@ def make_log_filename():
 
 def main():
     # Arguments
-    # version = 1; slide_size = 50000; aug_feature_ratio = 90
+    # version = 2; slide_size = 50000; aug_feature_ratio = 90
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
     # Define logger
@@ -103,11 +139,19 @@ def main():
         'Tsfresh': {
             'prefix': ['', 'fftr_', 'ffti_'],
             'suffix': ['', '_denoised']
+        },
+        'Tsfresh2': {
+            'prefix': [''],
+            'suffix': ['', '_denoised']
         }
     }
+    if len(feature_dict.keys()) != 0:
+        train_features_add, test_features_add = load_additional_featured_dataset(feature_dict, slide_size)
+    else:
+        train_features_add, test_features_add = pd.DataFrame(index=train_features.index, columns=[]), pd.DataFrame(index=test_features.index, columns=[])
 
     # Concat features
-    X = pd.concat([train_features, train_features_denoised], axis=1)[:-1]
+    X = pd.concat([train_features, train_features_denoised, train_features_add], axis=1)[:-1]
     y = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/y_{slide_size}.csv')[:-1]
     logger.info(f'Created X & y. X shape:{X.shape}, y shape:{y.shape}')
 
@@ -125,7 +169,7 @@ def main():
     train.to_csv(DATA_DIR/'input'/'featured'/f'featured_train_ver{version}_{slide_size}_{aug_feature_ratio}.csv', index=False)
 
     # Save test dataset
-    test = pd.concat([test_features, test_features_denoised], axis=1)
+    test = pd.concat([test_features, test_features_denoised, test_features_add], axis=1)
     test.to_csv(DATA_DIR/'input'/'featured'/f'featured_test_ver{version}_{slide_size}_{aug_feature_ratio}.csv', index=False)
 
     return
