@@ -65,7 +65,7 @@ def parallel_shuffle_argumentation(df, aug_feature_ratio, n_jobs):
     for i in range(1, len(th_indices)):
         sub_dfs.append(df.iloc[th_indices[i-1]:th_indices[i], :])
 
-    res = Parallel(n_jobs=n_jobs)([delayed(shuffle_argumentation)(id, df, aug_feature_ratio) for id, sub_df in enumerate(sub_dfs)])
+    res = Parallel(n_jobs=n_jobs)([delayed(shuffle_argumentation)(id, sub_df, aug_feature_ratio) for id, sub_df in enumerate(sub_dfs)])
 
     df_aug = pd.DataFrame()
     for id, sub_df_aug in res:
