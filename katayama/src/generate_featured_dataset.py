@@ -11,6 +11,7 @@ import pandas as pd
 import numpy as np
 import argparse
 from tqdm import tqdm
+from joblib import Parallel, delayed
 
 # os.chdir('./src')
 from paths import *
@@ -56,8 +57,26 @@ def load_additional_featured_dataset(feature_dict, slide_size):
 
     return train_features_add, test_features_add
 
-def shuffle_argumentation(df, aug_feature_ratio):
-    # aug_feature_ratio = 0.5
+def parsllel_shuffle_argumentation(df, aug_feature_ratio, n_jobs):
+    # n_jobs = 4
+    # df = X.iloc[:10000, :]
+    th_indices = list(range(0, int(df.shape[0]), int(df.shape[0]/n_jobs)))
+    sub_dfs = []
+    for i in range(1, len(th_indices)):
+        sub_dfs.append(df.iloc[th_indices[i-1]:th_indices[i], :])
+
+    res = Parallel(n_jobs=n_jobs)([delayed(shuffle_argumentation)(id, df, aug_feature_ratio) for id, sub_df in enumerate(sub_dfs)])
+
+    df_aug = pd.DataFrame()
+    for id, sub_df_aug in res:
+        df_aug = df_aug.append(sub_df_aug)
+
+    return df_aug
+
+
+def shuffle_argumentation(id, df, aug_feature_ratio):
+    # aug_feature_ratio = 0.9
+    # df = X.copy()
 
     a = np.arange(0, df.shape[1])
     #initialise aug dataframe - remember to set dtype!
@@ -86,7 +105,7 @@ def shuffle_argumentation(df, aug_feature_ratio):
         for n, j in enumerate(aug_feature_index):
             df_aug.iloc[i, j] = df.iloc[rand_row_index[n], j]
 
-    return df_aug
+    return id, df_aug
 
 def define_args():
     parser = argparse.ArgumentParser()
