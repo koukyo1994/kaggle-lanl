@@ -173,7 +173,7 @@ def drop_high_cc_features(df, th):
 
             if df_corr.loc[feature1, feature2] > th:
                 removed_features.append(feature2)
-    
+
     return df[retained_features]
 
 def create_submission_file(y_pred):
@@ -211,11 +211,7 @@ def get_and_validate_args(args):
 
 def main():
     # Arguments
-<<<<<<< HEAD
-    # slide_size = 50000; n_fold = 5; random_state = 11; early_stopping_rounds = 50
-=======
-    # data_ver = 1; slide_size = 50000; aug_feature_ratio = 50; n_fold = 5; random_state = 11
->>>>>>> a4b22328c6cfeb3993705c70548f20fb05eebca4
+    # data_ver = 1; slide_size = 50000; aug_feature_ratio = 50; n_fold = 5; random_state = 11; early_stopping_rounds = 50
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
     model_ver = 2

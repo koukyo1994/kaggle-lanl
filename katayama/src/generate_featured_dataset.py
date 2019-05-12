@@ -81,7 +81,7 @@ def make_log_filename():
 
 def main():
     # Arguments
-    # version = 1; slide_size = 50000; aug_feature_ratio = 50
+    # version = 1; slide_size = 50000; aug_feature_ratio = 90
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
     # Define logger
@@ -113,12 +113,12 @@ def main():
 
     # Shuffed argumentation
     if aug_feature_ratio != 0:
-        logger.info('Started Shuffle argumentation. Before shape:{X.shape}')
+        logger.info(f'Started Shuffle argumentation. Before shape:{X.shape}, aug_feature_ratio:{aug_feature_ratio}')
         X_arg = shuffle_argumentation(X, aug_feature_ratio/100)
         X = X.append(X_arg)
 
         y = y.append(y)
-        logger.info('Finished Shuffle argumentation. After shape:{X.shape}')
+        logger.info(f'Finished Shuffle argumentation. After shape:{X.shape}')
 
     # Save train dataset
     train = pd.concat([X, y], axis=1)

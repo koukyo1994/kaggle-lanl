@@ -97,13 +97,14 @@ def main():
     # Laod train data
     train = util.read_train_data()
 
-    generater = Tsfresh2(slide_size)
+    generater = Tsfresh2(slide_size, series_type='fftr')
     generater.run(train=train)
     generater.save()
 
-    generater = Tsfresh2(slide_size, denoising=True)
+    generater = Tsfresh2(slide_size, series_type='fftr', denoising=True)
     generater.run(train=train)
     generater.save()
+
 
 def main_past():
     # Argument
