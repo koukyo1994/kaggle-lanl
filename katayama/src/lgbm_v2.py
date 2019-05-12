@@ -31,7 +31,7 @@ pd.options.display.precision = 15
 warnings.filterwarnings('ignore')
 
 
-def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_metric='mae', columns=None, plot_feature_importance=False, model=None):
+def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_metric='mae', columns=None, plot_feature_importance=False, model=None, early_stopping_rounds=50):
     """
     Note:
         A function to train a variety of regression models.
@@ -82,10 +82,10 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
             y_train, y_valid = y.iloc[train_index], y.iloc[valid_index]
 
         if model_type == 'lgb':
-            model = lgb.LGBMRegressor(**params, n_estimators = 50000, n_jobs = -1)
+            model = lgb.LGBMRegressor(**params, n_estimators=50000, n_jobs=-1)
             model.fit(X_train, y_train,
                     eval_set=[(X_train, y_train), (X_valid, y_valid)], eval_metric=metrics_dict[eval_metric]['lgb_metric_name'],
-                    verbose=10000, early_stopping_rounds=200)
+                    verbose=10000, early_stopping_rounds=early_stopping_rounds)
 
             y_pred_valid = model.predict(X_valid)
             y_pred = model.predict(X_test, num_iteration=model.best_iteration_)
@@ -95,7 +95,7 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
             valid_data = xgb.DMatrix(data=X_valid, label=y_valid, feature_names=X.columns)
 
             watchlist = [(train_data, 'train'), (valid_data, 'valid_data')]
-            model = xgb.train(dtrain=train_data, num_boost_round=20000, evals=watchlist, early_stopping_rounds=200, verbose_eval=500, params=params)
+            model = xgb.train(dtrain=train_data, num_boost_round=20000, evals=watchlist, early_stopping_rounds=early_stopping_rounds, verbose_eval=500, params=params)
             y_pred_valid = model.predict(xgb.DMatrix(X_valid, feature_names=X.columns), ntree_limit=model.best_ntree_limit)
             y_pred = model.predict(xgb.DMatrix(X_test, feature_names=X.columns), ntree_limit=model.best_ntree_limit)
 
@@ -190,7 +190,7 @@ def get_and_validate_args(args):
 
 def main():
     # Arguments
-    # slide_size = 50000; n_fold = 5; random_state = 11
+    # slide_size = 50000; n_fold = 5; random_state = 11; early_stopping_rounds = 50
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
     version = '1-1'
@@ -265,7 +265,8 @@ def main():
                                                           y=y,
                                                           params=params,
                                                           folds=folds,
-                                                          plot_feature_importance=True
+                                                          plot_feature_importance=True,
+                                                          early_stopping_rounds=early_stopping_rounds
                                                           )
 
     importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
