@@ -23,7 +23,7 @@ from sklearn.preprocessing import LabelEncoder
 
 # os.chdir('./src')
 from paths import *
-import utils.log_functions as log
+import util.log_functions as log
 
 # %load_ext autoreload
 # %autoreload 2
@@ -31,7 +31,7 @@ pd.options.display.precision = 15
 warnings.filterwarnings('ignore')
 
 
-def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_metric='mae', columns=None, plot_feature_importance=False, model=None):
+def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_metric='mae', columns=None, plot_feature_importance=False, model=None, early_stopping_rounds=50):
     """
     Note:
         A function to train a variety of regression models.
@@ -85,7 +85,7 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
             model = lgb.LGBMRegressor(**params, n_estimators = 50000, n_jobs = -1)
             model.fit(X_train, y_train,
                     eval_set=[(X_train, y_train), (X_valid, y_valid)], eval_metric=metrics_dict[eval_metric]['lgb_metric_name'],
-                    verbose=10000, early_stopping_rounds=200)
+                    verbose=10000, early_stopping_rounds=early_stopping_rounds)
 
             y_pred_valid = model.predict(X_valid)
             y_pred = model.predict(X_test, num_iteration=model.best_iteration_)
@@ -95,7 +95,7 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
             valid_data = xgb.DMatrix(data=X_valid, label=y_valid, feature_names=X.columns)
 
             watchlist = [(train_data, 'train'), (valid_data, 'valid_data')]
-            model = xgb.train(dtrain=train_data, num_boost_round=20000, evals=watchlist, early_stopping_rounds=200, verbose_eval=500, params=params)
+            model = xgb.train(dtrain=train_data, num_boost_round=20000, evals=watchlist, early_stopping_rounds=early_stopping_rounds, verbose_eval=500, params=params)
             y_pred_valid = model.predict(xgb.DMatrix(X_valid, feature_names=X.columns), ntree_limit=model.best_ntree_limit)
             y_pred = model.predict(xgb.DMatrix(X_test, feature_names=X.columns), ntree_limit=model.best_ntree_limit)
 
@@ -155,6 +155,27 @@ def train_model_regression(X, X_test, y, params, folds, model_type='lgb', eval_m
 
     return result_dict, feature_importance
 
+def drop_high_cc_features(df, th):
+    df_corr = df.corr()
+
+    retained_features = []
+    removed_features = []
+    features = df_corr.index.tolist()
+    for feature1 in features:
+        if feature1 in removed_features:
+            continue
+        else:
+            retained_features.append(feature1)
+
+        for feature2 in features:
+            if feature1 == feature2:
+                continue
+
+            if df_corr.loc[feature1, feature2] > th:
+                removed_features.append(feature2)
+    
+    return df[retained_features]
+
 def create_submission_file(y_pred):
     submission = pd.read_csv(DATA_DIR / 'input/sample_submission.csv', index_col='seg_id')
     submission['time_to_failure'] = y_pred
@@ -164,7 +185,7 @@ def make_log_filename():
     try:
         filename = os.path.basename(__file__) # with .py file
     except:
-        filename = os.path.basename('__file__') # with atom hydrogen
+        filename = os.path.basename('lgbm') # with atom hydrogen
 
     time = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     log_filename = 'log_{filename}_{time}.log'.format(filename=filename, time=time)
@@ -190,57 +211,22 @@ def get_and_validate_args(args):
 
 def main():
     # Arguments
-    # slide_size = 50000; n_fold = 5; random_state = 11
+    # data_ver = 1; slide_size = 50000; aug_feature_ratio = 50; n_fold = 5; random_state = 11
     slide_size, n_fold, random_state = get_and_validate_args(args)
 
-    version = '1-1'
+    model_ver = 2
 
     # Define logger
     global logger
     logger = log.define_logger(make_log_filename())
 
     # load featureed datasets
-    train_features = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_{slide_size}.csv')
-    test_features = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/test_features.csv')
+    train = pd.read_csv(DATA_DIR/'input'/'featured'/f'featured_train_ver{data_ver}_{slide_size}_{aug_feature_ratio}.csv')
+    test = pd.read_csv(DATA_DIR/'input'/'featured'/f'featured_test_ver{data_ver}_{slide_size}_{aug_feature_ratio}.csv')
 
-    train_features_denoised = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_denoised_{slide_size}.csv')
-    test_features_denoised = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/test_features_denoised.csv')
-    train_features_denoised.columns = [f'{i}_denoised' for i in train_features_denoised.columns]
-    test_features_denoised.columns = [f'{i}_denoised' for i in test_features_denoised.columns]
-
-    # Laod additional features
-    feature_dict = {
-        'Tsfresh': {
-            'prefix': ['', 'fftr_', 'ffti_'],
-            'suffix': ['', '_denoised']
-        }
-    }
-
-    train_features_add = pd.DataFrame()
-    test_features_add = pd.DataFrame()
-    for feature in feature_dict.keys():
-        # feature = list(feature_dict.keys())[0]
-        prefixs = feature_dict[feature]['prefix']
-        surfixs = feature_dict[feature]['suffix']
-
-        for prefix, suffix in product(prefixs, surfixs):
-            sub_train_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_train.ftr')
-            # 不要な特徴量が入ってるので削除
-            sub_train_features_add = sub_train_features_add.drop([f'{prefix}time_rev_asym_stat_10{suffix}', f'{prefix}time_rev_asym_stat_100{suffix}', f'{prefix}var_larger_than_std_dev{suffix}', f'{prefix}seg_id{suffix}', f'{prefix}target{suffix}'], axis=1)
-            train_features_add = pd.concat([train_features_add, sub_train_features_add], axis=1)
-
-            sub_test_features_add = pd.read_feather(FEATURES_DIR/f'{slide_size}_slides'/f'{prefix}{feature}{suffix}_test.ftr')
-            # 不要な特徴量が入ってるので削除
-            sub_test_features_add = sub_test_features_add.drop([f'{prefix}time_rev_asym_stat_10{suffix}', f'{prefix}time_rev_asym_stat_100{suffix}'], axis=1)
-            test_features_add = pd.concat([test_features_add, sub_test_features_add], axis=1)
-
-    y = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/y_{slide_size}.csv')
-
-    X = pd.concat([train_features, train_features_denoised, train_features_add], axis=1)
-    X_test = pd.concat([test_features, test_features_denoised, test_features_add], axis=1)
-
-    X = X[:-1]
-    y = y[:-1]
+    y_train = train[['target']]
+    X_train = train.drop('target', axis=1)
+    X_test = test.copy()
 
     folds = KFold(n_splits=n_fold, shuffle=True, random_state=random_state)
 
@@ -260,33 +246,34 @@ def main():
               'colsample_bytree': 0.1
               }
 
-    result_dict_lgb, importances = train_model_regression(X=X,
+    result_dict_lgb, importances = train_model_regression(X=X_train,
                                                           X_test=X_test,
-                                                          y=y,
+                                                          y=y_train,
                                                           params=params,
                                                           folds=folds,
-                                                          plot_feature_importance=True
+                                                          plot_feature_importance=True,
+                                                          early_stopping_rounds=5
                                                           )
 
     importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
 
 
-    # 50: 1.848766011411793
-    # 100: 1.81299098135183
-    # 200: 1.8154912902707327
-    # 300: 1.8528059266115808
-    # 400: 1.8679691889090442
-    # 500: 1.881034253687152
-    # 600: 1.8878972346683145
-    # 700: 1.8939860545505476
-    # 800: 1.9000404620795657
-    # 900: 1.9060272804428213
-    # 1000: 1.9067553766476604
-    # 1100: 1.9062819749403608
-    # 1200: 1.9091694161831214
-    # 1300: 1.9117402099692768
-    # 1400: 1.9126346978022748
-    # 1500: 1.9130733164282883
+    train_features = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_{slide_size}.csv')
+    train_features_denoised = pd.read_csv(FEATURES_DIR / f'lanl-features-{slide_size}/train_features_denoised_{slide_size}.csv')
+    train_features_denoised.columns = [f'{i}_denoised' for i in train_features_denoised.columns]
+    th = 0.975
+    X_train_red = drop_high_cc_features(pd.concat([train_features, train_features_denoised], axis=1)[:-1], th)
+    X_test_red = X_test[X_train_red.columns]
+
+    result_dict_lgb_red, importances_red = train_model_regression(X=X_train_red,
+                                                          X_test=X_test_red,
+                                                          y=y_train,
+                                                          params=params,
+                                                          folds=folds,
+                                                          plot_feature_importance=True,
+                                                          early_stopping_rounds=5
+                                                          )
+
     n_tops = [50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000, 1100, 1200, 1300, 1400, 1500]
     cv_means_dict = {}
     for n_top in n_tops:
