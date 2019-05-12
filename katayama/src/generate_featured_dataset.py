@@ -57,22 +57,23 @@ def load_additional_featured_dataset(feature_dict, slide_size):
 
     return train_features_add, test_features_add
 
-def parallel_shuffle_argumentation(df, aug_feature_ratio, n_jobs):
+def parallel_shuffle_argumentation(X, aug_feature_ratio, n_jobs):
     # n_jobs = 4
     # df = X.iloc[:10000, :]
-    th_indices = list(range(0, int(df.shape[0]), int(df.shape[0]/n_jobs)))
-    sub_dfs = []
+    th_indices = list(range(0, int(X.shape[0]), int(X.shape[0]/(n_jobs-1))))
+    sub_Xs = []
     for i in range(1, len(th_indices)):
-        sub_dfs.append(df.iloc[th_indices[i-1]:th_indices[i], :])
+        sub_Xs.append(X.iloc[th_indices[i-1]:th_indices[i], :])
+    sub_Xs.append(X.iloc[th_indices[-1]:, :])
 
-    res = Parallel(n_jobs=n_jobs)([delayed(shuffle_argumentation)(id, sub_df, aug_feature_ratio) for id, sub_df in enumerate(sub_dfs)])
+    sub_X_augs = Parallel(n_jobs=n_jobs)([delayed(shuffle_argumentation)(id, sub_X, aug_feature_ratio) for id, sub_X in enumerate(sub_Xs)])
 
-    df_aug = pd.DataFrame()
-    for id, sub_df_aug in res:
-        print(f'argumented sub df\'s id:{id}')
-        df_aug = df_aug.append(sub_df_aug)
+    X_aug = pd.DataFrame()
+    for id, sub_X_aug in sub_X_augs:
+        print(f'arg data id:{id}')
+        X_aug = X_aug.append(sub_X_aug)
 
-    return df_aug
+    return X_aug
 
 
 def shuffle_argumentation(id, df, aug_feature_ratio):
@@ -139,8 +140,7 @@ def make_log_filename():
 
 def main():
     # Arguments
-    # version = 2; slide_size = 50000; aug_feature_ratio = 90
-
+    # version = 2; slide_size = 50000; aug_feature_ratio = 90; n_jobs = 4
     args = define_args()
     version, slide_size, aug_feature_ratio, n_jobs = get_and_validate_args(args)
 
