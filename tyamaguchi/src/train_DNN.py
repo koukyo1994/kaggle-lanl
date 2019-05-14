@@ -22,7 +22,7 @@ sys.path.append('.')
 DataPath = Path('tyamaguchi/data/katayama_features')
 delimiter = ','
 out = Path('tyamaguchi/nn_results')
-AugFiles=['train_aug_features_50000.csv']
+AugFiles=['train_aug_features_50000_0.9.csv']
 top_features = pd.read_csv('tyamaguchi/data/katayama_features/top1000_features.csv')['feature'].values
 
 def make_dataset(train_file='train_features_50000.csv', features=None, aug_files=[]):
@@ -121,7 +121,7 @@ def main():
         val_iter = chainer.iterators.SerialIterator(val, batchsize,
                                                           repeat=False, shuffle=False)
 
-        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/loss', patients=epoch, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
+        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/loss', patients=3, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
 
 
         updater = training.updaters.StandardUpdater(

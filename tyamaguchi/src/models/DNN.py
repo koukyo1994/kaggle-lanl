@@ -26,7 +26,7 @@ class DNN(chainer.ChainList):
     def __init__(self):
         super(DNN, self).__init__(
             LinearBlock(256),
-            LinearBlock(256),
+            LinearBlock(256,True),
             LinearBlock(512),
             LinearBlock(512),
             LinearBlock(512),
