@@ -35,9 +35,9 @@ class DNN(chainer.ChainList):
             LinearBlock(512),
             LinearBlock(512),
             LinearBlock(512,True),
-            LinearBlock(1028),
-            LinearBlock(1028,True),
-            LinearBlock(1028),
+            LinearBlock(1024),
+            LinearBlock(1024,True),
+            LinearBlock(2048),
             L.Linear(None, 1)
         )
 
