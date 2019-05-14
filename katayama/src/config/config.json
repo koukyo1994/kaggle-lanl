@@ -1,5 +1,8 @@
 {
-  "data":{
+  "data": {
     "TRAIN_DATA_LENGTH":629145481
+  },
+  "log": {
+    "logger_name": "main_logger"
   }
 }

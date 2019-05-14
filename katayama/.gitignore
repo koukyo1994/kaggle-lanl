@@ -1,4 +1,6 @@
 src/data/input/*.csv
 *.zip
+.DS_Store
 
 /src/workspace*
+/src/features/*/*.ftr
