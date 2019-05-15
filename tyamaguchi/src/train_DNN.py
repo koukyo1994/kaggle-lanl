@@ -5,7 +5,7 @@ from chainer import training
 from chainer import serializers
 from chainer.training import extensions
 from chainer.training import triggers
-from chainer.datasets import split_dataset_random,get_cross_validation_datasets_random
+from chainer.datasets import split_dataset_random,get_cross_validation_datasets
 import numpy as np
 import pandas as pd
 from pathlib import Path
@@ -16,6 +16,7 @@ import time
 import argparse
 import sys
 from sklearn.preprocessing import StandardScaler
+from sklearn.decomposition import PCA
 
 sys.path.append('.')
 
@@ -36,7 +37,9 @@ def make_dataset(train_file='train_features_50000.csv', features=None, aug_files
         df = df[features]
     df = df.values
     scaler = StandardScaler()
+    pca = PCA(n_components=1000)
     df = scaler.fit_transform(df).astype('float32')
+    df = pca.fit_transform(df).astype('float32')
     y = y.values
     train_val = [(df[i],y[i]) for i in range(len(df))]
     for thisFile in aug_files:
@@ -86,20 +89,20 @@ def main():
     lr = args.learnrate
     batchsize = args.batchsize
     epoch = args.epoch
-    n_folds = 5
+    n_folds = 3
 
 
     result_dir = create_result_dir(ModelName)
     shutil.copy(ModelPath,result_dir/ModelPath.name)
     train_val = make_dataset(TrainFile,top_features,AugFiles)
 
-    datasets = get_cross_validation_datasets_random(train_val,n_folds,11)
+    datasets = get_cross_validation_datasets(train_val,n_folds)
 
 
     for n_fold in range(n_folds):
         train, val = datasets[n_fold]
 
-        loss = lambda x,y:0.05*F.mean_absolute_error(x,y)+F.mean_squared_error(x,y)
+        loss = lambda x,y:F.mean_absolute_error(x,y)+F.mean_squared_error(x,y)
         model_path = os.path.splitext(ModelPath)[0].replace('/','.')
         model_module = import_module(model_path)
         model = getattr(model_module, ModelName)()
@@ -122,7 +125,7 @@ def main():
         val_iter = chainer.iterators.SerialIterator(val, batchsize,
                                                           repeat=False, shuffle=False)
 
-        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/loss', patients=25, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
+        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/loss', patients=20, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
 
 
         updater = training.updaters.StandardUpdater(
