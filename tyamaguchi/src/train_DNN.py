@@ -23,8 +23,8 @@ DataPath = Path('tyamaguchi/data/katayama_features')
 delimiter = ','
 out = Path('tyamaguchi/nn_results')
 AugFiles=[]
-# top_features = pd.read_csv('tyamaguchi/data/katayama_features/top1000_features.csv')['feature'].values
-top_features = None
+top_features = pd.read_csv('tyamaguchi/data/katayama_features/top1000_features.csv')['feature'].values[:800]
+# top_features = None
 
 def make_dataset(train_file='train_features_50000.csv', features=None, aug_files=[]):
     df = pd.read_csv(DataPath/train_file)
@@ -69,7 +69,7 @@ def main():
                         help='Model class name')
     parser.add_argument('--batchsize', '-b', type=int, default=64,
                         help='Number of images in each mini-batch')
-    parser.add_argument('--learnrate', '-l', type=float, default=0.005,
+    parser.add_argument('--learnrate', '-l', type=float, default=0.01,
                         help='Learning rate for SGD')
     parser.add_argument('--epoch', '-e', type=int, default=300,
                         help='Number of sweeps over the dataset to train')
@@ -99,7 +99,7 @@ def main():
     for n_fold in range(n_folds):
         train, val = datasets[n_fold]
 
-        loss = lambda x,y:0.05*F.mean_absolute_error(x,y)+F.mean_squared_error(x,y)
+        loss = lambda x,y:F.mean_absolute_error(x,y)+F.mean_squared_error(x,y)
         model_path = os.path.splitext(ModelPath)[0].replace('/','.')
         model_module = import_module(model_path)
         model = getattr(model_module, ModelName)()
@@ -112,7 +112,7 @@ def main():
             model.to_gpu()
 
 
-        optimizer = chainer.optimizers.MomentumSGD(lr)
+        optimizer = chainer.optimizers.RMSprop(lr)
         optimizer.setup(model)
         optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(5e-4))
 
@@ -122,7 +122,7 @@ def main():
         val_iter = chainer.iterators.SerialIterator(val, batchsize,
                                                           repeat=False, shuffle=False)
 
-        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/loss', patients=25, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
+        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/accuracy', patients=20, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
 
 
         updater = training.updaters.StandardUpdater(
