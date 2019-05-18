@@ -38,7 +38,7 @@ def change_rate(x):
     change = (np.diff(x) / x[:-1]).values
     change = change[np.nonzero(change)[0]]
     change = change[~np.isnan(change)]
-    change = change[~change != -np.inf]
+    change = change[~(change != -np.inf)]
     change = change[change != np.inf]
     return {
         "mean_change": np.mean(change),
@@ -284,11 +284,11 @@ def comprehensive_feats_dict(ts):
 
     funcs = [
         mean, std, ts_max, ts_min, ts_sum, slice_agg, slice_change,
-        mean_change_abs, abs_max, abs_mean, abs_percentile, abs_std,
-        abs_trend, hmean, gmean, kstat, kstatvar, moment, percentile,
-        trend, mad, median, kurt, skew, hilbert_mean, hann_mean,
-        max_to_min, max_to_min_diff, count_big, count_bigger,
-        classic_sta_lta_mean, exp_moving_agg, iqr, ave10, roll_features
+        mean_change_abs, abs_max, abs_mean, abs_percentile, abs_std, abs_trend,
+        hmean, gmean, kstat, kstatvar, moment, percentile, trend, mad, median,
+        kurt, skew, hilbert_mean, hann_mean, max_to_min, max_to_min_diff,
+        count_big, count_bigger, classic_sta_lta_mean, exp_moving_agg, iqr,
+        ave10, roll_features
     ]
     feats = {}
     for f in funcs:
@@ -303,4 +303,3 @@ def comprehensive_feats_dict(ts):
         feats.update(rfft)
         feats.update(ifft)
     return feats
-

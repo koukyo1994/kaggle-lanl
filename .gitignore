@@ -125,5 +125,6 @@ dmypy.json
 *.pth
 *.pt
 *.mat
+*.zip
 
 .DS_Store
