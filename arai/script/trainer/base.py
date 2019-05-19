@@ -26,8 +26,8 @@ class AbstractTrainer(metaclass=abc.ABCMeta):
 
     def fit(self, X, y, n_epochs=10):
         if self.objective == "classification":
-            self.n_classes = y.nunique()
-            self.train_preds = np.zeros((len(X), self.n_classes))
+            self.n_classes = 1
+            self.train_preds = np.zeros((len(X), ))
         elif self.objective == "regression":
             self.train_preds = np.zeros((len(X), ))
 
@@ -39,7 +39,7 @@ class AbstractTrainer(metaclass=abc.ABCMeta):
             self.logger.info(f"Fold {self.fold_num}")
             self.logger.info("=" * 20)
 
-            X_train, X_val = X[trn_idx], X[val_idx]
+            X_train, X_val = X.iloc[trn_idx, :], X.iloc[val_idx, :]
             y_train, y_val = y[trn_idx], y[val_idx]
 
             valid_preds = self._fit(X_train, y_train, X_val, y_val, n_epochs)
