@@ -429,7 +429,7 @@ def scale_fields(fn_train='train_x.csv', fn_test='test_x.csv',
     scaled_test_X.to_csv(os.path.join(OUTPUT_DIR, fn_out_test), index=False)
 
 #%%
-split_raw_data()
+# split_raw_data()
 build_rnd_idxs()
 run_mp_build()
 join_mp_build()
