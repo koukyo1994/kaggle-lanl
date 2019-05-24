@@ -407,11 +407,12 @@ class FeatureGenerator(object):
         feature_list = []
 
         if self.dtype == 'train':
-            train = pd.read_csv(DATA_DIR / 'input/train.csv', dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64}, nrows=100000000)
+            train = pd.read_csv(DATA_DIR / 'input/train.csv', dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64})
 
             if random_slide:
                 np.random.seed(11)
-                start_index_list = np.random.choice(range(train.shape[0]), 24000, replace=False)
+                n_record = 24000
+                start_index_list = np.random.choice(range(train.shape[0]-150000), n_record, replace=False)
                 index_tuple_list = []
                 for start in start_index_list:
                     index_tuple_list.append((start, start+150000))

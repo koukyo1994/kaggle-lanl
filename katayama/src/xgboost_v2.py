@@ -229,7 +229,7 @@ def main():
     X_test = X_test.drop(drop_columns, axis=1)
 
     # 教師データと相関しない特徴量を落とす
-    drop_cols = drop_pearson(X_train, y_train, th=0.01)
+    drop_cols = drop_pearson(X_train, y_train, th=0.001)
     X_train = X_train.drop(drop_cols, axis=1)
     X_test = X_test.drop(drop_cols, axis=1)
 
@@ -237,6 +237,25 @@ def main():
 
     folds = KFold(n_splits=n_fold, shuffle=False, random_state=random_state)
 
+    # パラメーターチューニング
+    params = {
+        'max_depth': [3, 5, 10, 15],
+        'learning_rate': [0.05, 0.1],
+        'gamma': [0.5, 1, 2, 5],
+        'min_child_weight': [1.0, 2.0, 5.0],
+    }
+
+    model = xgb.XGBRegressor(early_stopping_rounds=early_stopping_rounds, eval_metric='mae', seed=random_state)
+
+    os.environ['JOBLIB_TEMP_FOLDER'] = '/home/katay'
+    cv = GridSearchCV(model, params, cv=folds, verbose=10, scoring='mean_absolute_error', n_jobs=-1)
+    cv.fit(X_train, y_train)
+
+    cv.best_params_
+    cv_result = pd.DataFrame(cv.cv_results_)
+    cv_result.to_csv(SRC_DIR/'models'/'xgboost_grid_v2.csv')
+
+    params = {'gamma': 0.5, 'learning_rate': 0.05, 'max_depth': 10, 'min_child_weight': 2.0}
     result_dict_lgb, importances = train_model_regression(X=X_train,
                                                           X_test=X_test,
                                                           y=y_train,
@@ -249,19 +268,10 @@ def main():
     importances = importances[['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
 
     submission = create_submission_file(result_dict_lgb['prediction'])
-    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_xgb_dver{data_ver}_{slide_size}slide_topall_pearson1_esr{early_stopping_rounds}_sharg{aug_feature_ratio}.csv')
+    submission.to_csv(DATA_DIR / f'output/best_kernel/submission_xgb_dver{data_ver}_{slide_size}slide_topall_pearson1_esr{early_stopping_rounds}_sharg{aug_feature_ratio}_gscv1.csv')
 
 
-    # 100: 2.3828563944616645
-    # 200: 2.3679517421261935
-    # 300: 2.3789489122758023
-    # 400: 2.3918688865133584
-    # 500: 2.4054866885002766
-    # 600: 2.4136703579330736
-    # 700: 2.4161196546293704
-    # 800: 2.4199258041886225
-    # 900: 2.422044245630842
-    # 1000: 2.4314562691205506
+
     n_tops = [100, 200, 300, 400, 500, 600, 700, 800, 900, 1000]
     cv_means_dict = {}
     for n_top in n_tops:
