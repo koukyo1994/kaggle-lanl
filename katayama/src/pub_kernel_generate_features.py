@@ -20,7 +20,7 @@ TRAIN_DATA_LENGTH = config['data']['TRAIN_DATA_LENGTH']
 def main():
     n_jobs = -1
     chunk_size = 9999
-    denoising = True
+    denoising = False
     random_slide = True
 
     print(n_jobs, chunk_size, denoising, random_slide)
