@@ -19,9 +19,9 @@ from scipy.signal import hann
 from scipy.signal import convolve
 from scipy import stats
 
+# os.chdir('./src')
 import features.denoising as deno
 
-# os.chdir('./katayama/src')
 sys.path.append('../')
 from paths import *
 
@@ -403,38 +403,31 @@ class FeatureGenerator(object):
 
         return pd.DataFrame(feature_list)
 
-    def generate_2(self, denoising=False):
+    def generate_2(self, denoising=False, random_slide=False):
         feature_list = []
 
         if self.dtype == 'train':
             train = pd.read_csv(DATA_DIR / 'input/train.csv', dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64})
 
-            start = 0
-            end = 150000
-            index_tuple_list = []
-            while end <= train.shape[0]:
-                index_tuple_list.append((start, end))
-                start += self.chunk_size
-                end += self.chunk_size
-            index_tuple_list.append((start, train.shape[0]-1))
+            if random_slide:
+                np.random.seed(11)
+                n_record = 24000
+                start_index_list = np.random.choice(range(train.shape[0]-150000), n_record, replace=False)
+                index_tuple_list = []
+                for start in start_index_list:
+                    index_tuple_list.append((start, start+150000))
+            else:
+                start = 0
+                end = 150000
+                index_tuple_list = []
+                while end <= train.shape[0]:
+                    index_tuple_list.append((start, end))
+                    start += self.chunk_size
+                    end += self.chunk_size
+                index_tuple_list.append((start, train.shape[0]-1))
 
             res = Parallel(n_jobs=self.n_jobs, backend='threading')([delayed(self.get_features_2)(train, counter, index_tuple, denoising) for counter, index_tuple in enumerate(index_tuple_list)])
 
-
-            # xs = []
-            # ys = []
-            # seg_ids = []
-            # for counter, index_tuple in enumerate(index_tuple_list):
-            #     x, y, seg_id, = self.slice_train_data(train, counter, index_tuple)
-            #     if denoising:
-            #         xs.append(deno.denoise_signal(deno.high_pass_filter(x, low_cutoff=10000, SAMPLE_RATE=4000000), wavelet='haar', level=1))
-            #     else:
-            #         xs.append(x)
-            #     ys.append(y)
-            #     seg_ids.append(seg_id)
-            # del train
-            #
-            # res = Parallel(n_jobs=self.n_jobs, backend='threading')([delayed(self.get_features)(list(xs[i]), ys[i], seg_ids[i]) for i in tqdm(range(len(xs)))])
         else:
             res = Parallel(n_jobs=self.n_jobs,
                            backend='threading')(delayed(self.get_features)(x, y, s)

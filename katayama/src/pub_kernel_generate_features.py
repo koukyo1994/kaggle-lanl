@@ -19,21 +19,22 @@ TRAIN_DATA_LENGTH = config['data']['TRAIN_DATA_LENGTH']
 
 def main():
     n_jobs = -1
-    chunk_size = 30000
-    denoising = True
+    chunk_size = 9999
+    denoising = False
+    random_slide = True
 
-    print(n_jobs, chunk_size, denoising)
+    print(n_jobs, chunk_size, denoising, random_slide)
 
     feature_dir_name = f'lanl-features-{chunk_size}'
 
     training_fg = FeatureGenerator(dtype='train', n_jobs=n_jobs, chunk_size=chunk_size)
-    training_data = training_fg.generate_2(denoising=denoising)
+    training_data = training_fg.generate_2(denoising=denoising, random_slide=random_slide)
 
     test_fg = FeatureGenerator(dtype='test', n_jobs=n_jobs, chunk_size=150000)
     test_data = test_fg.generate_2(denoising=denoising)
 
-    X = training_data.drop(['target', 'seg_id'], axis=1)
-    X_test = test_data.drop(['target', 'seg_id'], axis=1)
+    X = training_data.drop(['target'], axis=1)
+    X_test = test_data.drop(['target'], axis=1)
     test_segs = test_data.seg_id
     y = training_data.target
 
