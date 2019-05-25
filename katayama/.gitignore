@@ -4,3 +4,5 @@ src/data/input/*.csv
 
 /src/workspace*
 /src/features/*/*.ftr
+
+/src/features/plot_features/*
