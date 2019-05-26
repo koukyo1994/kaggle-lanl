@@ -13,6 +13,7 @@ import matplotlib.pyplot as plt
 import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split, KFold, cross_val_score, StratifiedKFold, GridSearchCV
+from sklearn.linear_model import LinearRegression,Ridge,Lasso
 from scipy.stats import pearsonr
 
 # os.chdir('./src')
@@ -117,6 +118,55 @@ def lgbm_oof(X, y, X_test, folds, params, early_stopping_rounds):
 
     return result_dict
 
+def ridge_oof(X, y, X_test, folds, params):
+    columns = X.columns
+
+    # out-of-fold predictions on train data
+    oof = np.zeros(len(X))
+
+    # averaged predictions on train data
+    prediction = np.zeros(len(X_test))
+
+    # list of scores on folds
+    scores = []
+    models = []
+
+    # split and train on folds
+    for fold_n, (train_index, valid_index) in enumerate(folds.split(X)):
+        print(f'Fold {fold_n + 1} started at {time.ctime()}')
+        if type(X) == np.ndarray:
+            X_train, X_valid = X[columns][train_index], X[columns][valid_index]
+            y_train, y_valid = y[train_index], y[valid_index]
+        else:
+            X_train, X_valid = X[columns].iloc[train_index], X[columns].iloc[valid_index]
+            y_train, y_valid = y.iloc[train_index], y.iloc[valid_index]
+
+        model = Ridge(**params)
+        model.fit(X_train, y_train)
+
+        y_pred_valid = model.predict(X_valid)
+        y_pred = model.predict(X_test)
+        y_pred = np.reshape(y_pred, (y_pred.shape[0],))
+
+        oof[valid_index] = y_pred_valid.reshape(-1,)
+        scores.append(mean_absolute_error(y_valid, y_pred_valid))
+
+        prediction += y_pred
+
+        models.append(model)
+
+    prediction /= folds.n_splits
+
+    print('CV mean score: {0:.4f}, std: {1:.4f}.'.format(np.mean(scores), np.std(scores)))
+
+    result_dict = {}
+    result_dict['oof'] = oof
+    result_dict['prediction'] = prediction
+    result_dict['scores'] = scores
+    result_dict['models'] = models
+
+    return result_dict
+
 def create_submission_file(y_pred):
     submission = pd.read_csv(DATA_DIR / 'input/sample_submission.csv', index_col='seg_id')
     submission['time_to_failure'] = y_pred
@@ -124,7 +174,8 @@ def create_submission_file(y_pred):
 
 def main():
     params_dict = {}
-    model_names = ['lgbm1']
+    # model_names = ['lgbm1', 'lgbm2', 'lgbm3', 'lgbm4', 'lgbm5', 'lgbm6']
+    model_names = ['lgbm1', 'lgbm4', 'lgbm6']
     for model_name in model_names:
         # model_name = 'lgbm1'
         with open(SRC_DIR/'models'/'stacking_params'/f'{model_name}.json', 'r') as f:
@@ -183,21 +234,26 @@ def main():
         first_layer_oofs[model_name] = result_dict['oof']
         first_layer_predictions[model_name] = result_dict['prediction']
 
-    tmp = result_dict['feature_importance'][['feature', 'importance']].groupby('feature')['importance'].mean().sort_values(ascending=False).reset_index()
-    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/workspace/katayama/feature_importance_ojisan.csv', tmp, index=False)
-
     # 1層目の予測
     X_test_2 = pd.DataFrame(first_layer_predictions)
 
     # 2層目の学習
     X_train_2 = pd.DataFrame(first_layer_oofs)
     result_dict_2 = lgbm_oof(X_train_2, y_train, X_test_2, folds, {}, 20)
+    # result_dict_2 = ridge_oof(X_train_2, y_train, X_test_2, folds, {'alpha':10})
 
     # 2層目の予測
     y_pred = result_dict_2['prediction']
 
     # Submission fileの作成
     submission = create_submission_file(y_pred)
+
+    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/stacking_lgbm146_oof.csv', pd.DataFrame({'oof':result_dict_2['oof']}), index=False)
+    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/stacking_lgbm146.csv', submission)
+    # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/stacking_lgbm146_ridge_oof.csv', pd.DataFrame({'oof':result_dict_2['oof']}), index=False)
+    # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/stacking_lgbm146_ridge.csv', submission)
+    # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/stacking_lgbm1-6_oof.csv', pd.DataFrame({'oof':result_dict_2['oof']}), index=False)
+    # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/stacking_lgbm1-6.csv', submission)
 
     return
 
