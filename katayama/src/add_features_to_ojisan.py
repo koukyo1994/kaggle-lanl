@@ -22,6 +22,7 @@ from scipy import stats
 # os.chdir('src')
 from paths import *
 import util.s3_functions as s3
+import features.denoising as deno
 
 # os.chdir('./src')
 # %load_ext autoreload
@@ -352,7 +353,7 @@ class FeatureGeneratorOjisan(object):
 
 def main():
     n_jobs = -1
-    denoising = False
+    denoising = True
 
     feature_dir_name = f'add_ojisan'
     # Save datasets

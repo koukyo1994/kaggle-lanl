@@ -174,7 +174,7 @@ def create_submission_file(y_pred):
 
 def main():
     params_dict = {}
-    # model_names = ['lgbm1', 'lgbm2', 'lgbm3', 'lgbm4', 'lgbm5', 'lgbm6']
+    # model_names = ['lgbm7']
     model_names = ['lgbm1', 'lgbm4', 'lgbm6']
     for model_name in model_names:
         # model_name = 'lgbm1'

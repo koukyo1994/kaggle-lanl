@@ -175,6 +175,9 @@ def main():
     # importances['type'] = importances['type'].where(~importances['feature'].isin(ojisan_columns), 'original')
     # importances.groupby('type')['importance'].sum()/importances['importance'].sum()
 
+    # PCAの特徴量を追加
+    X_train
+
     # Feature resamplingでデータ拡張
     # X_train_aug_path = params['X_train_path'].replace('x_sorted', f'x_aug_{params["feature_resampling_rate"]}')
     X_train_aug_path = params['X_train_path'].replace('_x', f'_x_aug_{params["feature_resampling_rate"]}')
