@@ -16,7 +16,10 @@ from sklearn.model_selection import train_test_split, KFold, cross_val_score, St
 from sklearn.linear_model import LinearRegression,Ridge,Lasso
 from scipy.stats import pearsonr
 
+
 # os.chdir('./src')
+# %load_ext autoreload
+# %autoreload 2
 
 from paths import *
 import util.s3_functions as s3
@@ -158,6 +161,7 @@ def main():
     # drop_info['type'] = 'added'
     # drop_info['type'] = drop_info['type'].where(~drop_info['drop_cols'].isin(ojisan_columns), 'original')
     # drop_info['type'].value_counts()/drop_info.shape[0]
+    # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/workspace/katayama/drop_info.csv', drop_info, index=False)
 
     # モデルの寄与度で特徴量選択
     folds = KFold(n_splits=params['n_cv'], shuffle=params['shuffle'], random_state=params['random_state'])
@@ -179,7 +183,7 @@ def main():
     # X_train_aug_path = params['X_train_path'].replace('x_sorted', f'x_aug_{params["feature_resampling_rate"]}')
     X_train_aug_path = params['X_train_path'].replace('_x', f'_x_aug_{params["feature_resampling_rate"]}')
     X_train_aug = s3.read_csv_in_s3(X_train_aug_path)
-    y_train_aug = s3.read_csv_in_s3('kaggle-nowcast/kaggle_lanl/data/input/featured/ojisan/train_y.csv')
+    y_train_aug = s3.read_csv_in_s3(params['y_train_path'])
 
     X_train_aug = X_train_aug[X_train.columns]
     X_train = X_train.append(X_train_aug)
@@ -206,10 +210,12 @@ def main():
 
     submission = create_submission_file(prediction.mean(axis=1).values)
 
+    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_ojisan36_04_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
+    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_ojisan36_04.csv', submission)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_best_seedave_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_best_seedave.csv', submission)
-    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_04_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
-    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_04.csv', submission)
+    # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_03_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
+    # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_03.csv', submission)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_07_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_07.csv', submission)
 

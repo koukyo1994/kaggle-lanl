@@ -9,7 +9,6 @@ from joblib import Parallel, delayed
 # os.chdir('src')
 from paths import *
 import util.s3_functions as s3
-import features.feature_resampling_augumentation as fraug
 
 
 def create_augumentation(train, AUG_FEATURE_RATIO):
@@ -21,7 +20,7 @@ def create_augumentation(train, AUG_FEATURE_RATIO):
     train_aug = pd.DataFrame(index=train.index, columns=train.columns, dtype='float64')
 
     #ratio of features to be randomly sampled
-
+    #AUG_FEATURE_RATIO = 0.5
     #to integer count
     AUG_FEATURE_COUNT = np.floor(train.shape[1]*AUG_FEATURE_RATIO).astype('int16')
 
@@ -44,23 +43,8 @@ def create_augumentation(train, AUG_FEATURE_RATIO):
         for n, j in enumerate(aug_feature_index):
             train_aug.iloc[i, j] = train.iloc[rand_row_index[n], j]
 
-    try:
-        train_aug[['seg_id', 'seg_start', 'seg_end']] = train[['seg_id', 'seg_start', 'seg_end']]
-    except:
-        pass
-
-    return train_aug
-
-def main():
-    dir_name = 'ojisan36'
-    filename = 'train_x.csv'
-    AUG_FEATURE_RATIO = 0.7
-
-    train = s3.read_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/{filename}')
-    train_aug = create_augumentation(train, AUG_FEATURE_RATIO)
+    train_aug[['seg_id', 'seg_start', 'seg_end']] = train[['seg_id', 'seg_start', 'seg_end']]
+    # train_aug.to_csv('./train_x_aug_{}.csv'.format(AUG_FEATURE_RATIO), index=False)
     s3.to_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/train_x_aug_{AUG_FEATURE_RATIO}.csv', train_aug, index=False)
 
-    return
-
-if __name__ == '__main__':
-    main()
+    return train_aug

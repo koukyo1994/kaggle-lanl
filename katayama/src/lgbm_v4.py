@@ -14,12 +14,16 @@ import lightgbm as lgb
 from sklearn.metrics import mean_absolute_error
 from sklearn.model_selection import train_test_split, KFold, cross_val_score, StratifiedKFold, GridSearchCV
 from sklearn.linear_model import LinearRegression,Ridge,Lasso
+from sklearn.decomposition import PCA
 from scipy.stats import pearsonr
 
 # os.chdir('./src')
+# %load_ext autoreload
+# %autoreload 2
 
 from paths import *
 import util.s3_functions as s3
+import features.feature_resampling_augumentation as fraug
 
 
 pd.options.display.precision = 15
@@ -124,7 +128,7 @@ def create_submission_file(y_pred):
     return submission
 
 def main():
-    with open(SRC_DIR/'models'/'stacking_params'/f'lgbm20.json', 'r') as f:
+    with open(SRC_DIR/'models'/'stacking_params'/f'lgbm34.json', 'r') as f:
         params = json.load(f)
         params['shuffle'] = params['shuffle'] == 'True'
 
@@ -176,13 +180,36 @@ def main():
     # importances.groupby('type')['importance'].sum()/importances['importance'].sum()
 
     # PCAの特徴量を追加
-    X_train
+    n_pca = 30
+
+    pca = PCA()
+    pca.fit(X_train)
+
+    X_train_pca = pd.DataFrame(pca.transform(X_train)).iloc[:, :n_pca]
+    X_train_pca.columns = [f'PCA_{x+1}' for x in X_train_pca.columns]
+    X_train = pd.concat([X_train, X_train_pca], axis=1)
+
+    X_test_pca = pd.DataFrame(pca.transform(X_test)).iloc[:, :n_pca]
+    X_test_pca.columns = [f'PCA_{x+1}' for x in X_test_pca.columns]
+    X_test = pd.concat([X_test, X_test_pca], axis=1)
 
     # Feature resamplingでデータ拡張
-    # X_train_aug_path = params['X_train_path'].replace('x_sorted', f'x_aug_{params["feature_resampling_rate"]}')
-    X_train_aug_path = params['X_train_path'].replace('_x', f'_x_aug_{params["feature_resampling_rate"]}')
+    dir_name = 'ojisan36'
+
+    X_train_aug_path = f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/train_x_aug_{params["feature_resampling_rate"]}.csv'
     X_train_aug = s3.read_csv_in_s3(X_train_aug_path)
-    y_train_aug = s3.read_csv_in_s3('kaggle-nowcast/kaggle_lanl/data/input/featured/ojisan/train_y.csv')
+
+    if pca != 0:
+        filename = f'train_x_aug_{params["feature_resampling_rate"]}_pca{n_pca}.csv'
+        if s3.exists(f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/{filename}'):
+            X_train_pca_aug = fraug.create_augumentation(X_train_pca, params["feature_resampling_rate"])
+            s3.to_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/{filename}', X_train_pca_aug, index=False)
+        else:
+            X_train_pca_aug = s3.read_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/{filename}')
+
+        X_train_aug = pd.concat([X_train_aug, X_train_pca_aug], axis=1)
+
+    y_train_aug = s3.read_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/input/featured/ojisan/train_y.csv')
 
     X_train_aug = X_train_aug[X_train.columns]
     X_train = X_train.append(X_train_aug)
@@ -211,8 +238,8 @@ def main():
 
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_best_seedave_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_best_seedave.csv', submission)
-    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_04_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
-    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_04.csv', submission)
+    s3.to_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_04_pca{n_pca}_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
+    s3.to_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_04_pca{n_pca}.csv', submission)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_07_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_07.csv', submission)
 

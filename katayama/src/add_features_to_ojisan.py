@@ -165,7 +165,7 @@ class FeatureGeneratorOjisan(object):
         # feature_dict['min'] = x.min()
 
         # basic stats on absolute values
-        feature_dict['mean_change_abs'] = np.mean(np.diff(x))
+        # feature_dict['mean_change_abs'] = np.mean(np.diff(x))
         # feature_dict['abs_max'] = np.abs(x).max()
         # feature_dict['abs_mean'] = np.abs(x).mean()
         # feature_dict['abs_std'] = np.abs(x).std()
@@ -176,9 +176,9 @@ class FeatureGeneratorOjisan(object):
 
         # k-statistic and moments
         # for i in range(1, 5):
-        for i in [3]:
-            feature_dict[f'kstat_{i}'] = stats.kstat(x, i)
-            feature_dict[f'moment_{i}'] = stats.moment(x, i)
+        # for i in [3]:
+        #     feature_dict[f'kstat_{i}'] = stats.kstat(x, i)
+        #     feature_dict[f'moment_{i}'] = stats.moment(x, i)
 
         # for i in [1, 2]:
         #     feature_dict[f'kstatvar_{i}'] = stats.kstatvar(x, i)
@@ -293,7 +293,7 @@ class FeatureGeneratorOjisan(object):
 
         for c in coefs:
             feature_dict[f'spkt_welch_density_{c}'] = list(feature_calculators.spkt_welch_density(x, [{'coeff': c}]))[0][1]
-            feature_dict[f'time_rev_asym_stat_{c}'] = feature_calculators.time_reversal_asymmetry_statistic(x, c)
+            # feature_dict[f'time_rev_asym_stat_{c}'] = feature_calculators.time_reversal_asymmetry_statistic(x, c)
 
         # statistics on rolling windows of various sizes
         for w in windows:
@@ -332,7 +332,7 @@ class FeatureGeneratorOjisan(object):
         if self.dtype == 'train':
             train = pd.read_csv(DATA_DIR / 'input/train.csv', dtype={'acoustic_data': np.float64, 'time_to_failure': np.float64})
 
-            start_indices = s3.read_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/input/featured/ojisan/start_indices_4k.csv', header=None)
+            start_indices = s3.read_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/input/featured/ojisan36/start_indices_4k.csv', header=None)
             index_tuple_list = []
             for i in range(6):
                 # i = 1
@@ -353,9 +353,9 @@ class FeatureGeneratorOjisan(object):
 
 def main():
     n_jobs = -1
-    denoising = True
+    denoising = False
 
-    feature_dir_name = f'add_ojisan'
+    feature_dir_name = f'add_ojisan36'
     # Save datasets
     out_dir = FEATURES_DIR / feature_dir_name
     out_dir.mkdir(parents=True, exist_ok=True)
@@ -379,24 +379,24 @@ def main():
     else:
         X.to_csv(out_dir / f'train_features.csv', index=False)
 
-    test_fg = FeatureGeneratorOjisan(dtype='test', n_jobs=n_jobs, chunk_size=150000)
-    test_data = test_fg.generate_2(denoising=denoising)
-
-    X_test = test_data.drop(['target'], axis=1)
-    test_segs = test_data.seg_id
-    y = training_data.target
-
-    for col in X_test.columns:
-        if X_test[col].isnull().any():
-            X_test.loc[X_test[col] == -np.inf, col] = means_dict[col]
-            X_test[col] = X_test[col].fillna(means_dict[col])
-
-    if denoising:
-        X_test.to_csv(out_dir / 'test_features_denoised.csv', index=False)
-        pd.DataFrame(y).to_csv(out_dir / f'y_denoised_{chunk_size}.csv', index=False)
-    else:
-        X_test.to_csv(out_dir / 'test_features.csv', index=False)
-        pd.DataFrame(y).to_csv(out_dir / f'y_{chunk_size}.csv', index=False)
+    # test_fg = FeatureGeneratorOjisan(dtype='test', n_jobs=n_jobs, chunk_size=150000)
+    # test_data = test_fg.generate_2(denoising=denoising)
+    #
+    # X_test = test_data.drop(['target'], axis=1)
+    # test_segs = test_data.seg_id
+    # y = training_data.target
+    #
+    # for col in X_test.columns:
+    #     if X_test[col].isnull().any():
+    #         X_test.loc[X_test[col] == -np.inf, col] = means_dict[col]
+    #         X_test[col] = X_test[col].fillna(means_dict[col])
+    #
+    # if denoising:
+    #     X_test.to_csv(out_dir / 'test_features_denoised.csv', index=False)
+    #     pd.DataFrame(y).to_csv(out_dir / f'y_denoised_{chunk_size}.csv', index=False)
+    # else:
+    #     X_test.to_csv(out_dir / 'test_features.csv', index=False)
+    #     pd.DataFrame(y).to_csv(out_dir / f'y_{chunk_size}.csv', index=False)
 
     return
 

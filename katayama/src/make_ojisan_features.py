@@ -2,31 +2,36 @@ import os
 import time
 import warnings
 import traceback
+import multiprocessing as mp
+
 import numpy as np
 import pandas as pd
 from scipy import stats
 import scipy.signal as sg
-import multiprocessing as mp
 from scipy.signal import hann
 from scipy.signal import hilbert
 from scipy.signal import convolve
 from sklearn.linear_model import LinearRegression
 from sklearn.preprocessing import StandardScaler
-
 import xgboost as xgb
 import lightgbm as lgb
 from sklearn.model_selection import KFold
 from sklearn.metrics import mean_squared_error
 from sklearn.metrics import mean_absolute_error
-
 from tqdm import tqdm
+
+# os.chdir('src')
+from paths import *
+
+
+pd.options.display.precision = 15
 warnings.filterwarnings("ignore")
 
-OUTPUT_DIR = r'd:\#earthquake\final_model'  # set for local environment
-DATA_DIR = r'd:\#earthquake\data'  # set for local environment
+OUTPUT_DIR = str(FEATURES_DIR/'ojisan')  # set for local environment
+DATA_DIR = str(DATA_DIR/'input')  # set for local environment
 
 SIG_LEN = 150000
-NUM_SEG_PER_PROC = 4000
+NUM_SEG_PER_PROC = 8000
 NUM_THREADS = 6
 
 NY_FREQ_IDX = 75000  # the test signals are 150k samples long, Nyquist is thus 75k.
@@ -400,7 +405,7 @@ def build_test_fields():
 
     print('start for loop')
     count = 0
-    for seg_id in tqdm_notebook(test_X.index):  # just tqdm in IDE
+    for seg_id in tqdm(test_X.index):  # just tqdm in IDE
         seg = pd.read_csv(os.path.join(DATA_DIR, 'test', str(seg_id) + '.csv'))
         # train_X = create_features_pk_det(seg_id, seg, train_X, start_idx, end_idx)
         test_X = create_features(seg_id, seg, test_X, 0, 0)
