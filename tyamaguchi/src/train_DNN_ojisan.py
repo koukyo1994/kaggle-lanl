@@ -19,10 +19,10 @@ from sklearn.preprocessing import StandardScaler
 
 sys.path.append('.')
 
-DataPath = Path('tyamaguchi/data/ojisan_features')
+DataPath = Path('tyamaguchi/data/ojisan_features_36')
 delimiter = ','
 out = Path('tyamaguchi/nn_results')
-AugFiles=['train_x_aug_0.5.csv']
+AugFiles=['train_x_aug_0.4.csv']
 top_features = pd.read_csv('tyamaguchi/data/ojisan_features/columns_LB1346.csv')['feature'].values
 
 def make_dataset(train_file='train_x.csv', features=None, aug_files=[]):
@@ -62,11 +62,11 @@ def main():
                         help='Model class name')
     parser.add_argument('--train_file', '-t', type=str, default='train_x.csv',
                         help='Model class name')
-    parser.add_argument('--batchsize', '-b', type=int, default=64,
+    parser.add_argument('--batchsize', '-b', type=int, default=32,
                         help='Number of images in each mini-batch')
-    parser.add_argument('--learnrate', '-l', type=float, default=0.005,
+    parser.add_argument('--learnrate', '-l', type=float, default=0.01,
                         help='Learning rate for SGD')
-    parser.add_argument('--epoch', '-e', type=int, default=300,
+    parser.add_argument('--epoch', '-e', type=int, default=500,
                         help='Number of sweeps over the dataset to train')
     parser.add_argument('--gpu', '-g', type=int, default=-1,
                         help='GPU ID (negative value indicates CPU)')
@@ -93,8 +93,7 @@ def main():
 
     for n_fold in range(n_folds):
         train, val = datasets[n_fold]
-
-        loss = lambda x,y:0.2*F.mean_absolute_error(x,y)+F.mean_squared_error(x,y)
+        loss = lambda x,y:F.mean_absolute_error(x,y) # +F.mean_squared_error(x,y)
         model_path = os.path.splitext(ModelPath)[0].replace('/','.')
         model_module = import_module(model_path)
         model = getattr(model_module, ModelName)()
@@ -107,9 +106,10 @@ def main():
             model.to_gpu()
 
 
-        optimizer = chainer.optimizers.MomentumSGD(lr)
+        optimizer = chainer.optimizers.Adam(lr)
+        # optimizer = chainer.optimizers.MomentumSGD(lr)
         optimizer.setup(model)
-        optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(5e-4))
+        # optimizer.add_hook(chainer.optimizer_hooks.WeightDecay(5e-4))
 
 
 
@@ -117,15 +117,17 @@ def main():
         val_iter = chainer.iterators.SerialIterator(val, batchsize,
                                                           repeat=False, shuffle=False)
 
-        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/loss', patients=20, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
+        stop_trigger = training.triggers.EarlyStoppingTrigger(check_trigger=(1, 'epoch'), monitor='validation/main/loss', patients=50, mode='auto', verbose=False, max_trigger=(epoch, 'epoch'))
 
 
         updater = training.updaters.StandardUpdater(
             train_iter, optimizer, device=gpu_id)
         trainer = training.Trainer(updater, stop_trigger, out=result_dir)
         trainer.extend(extensions.Evaluator(val_iter, model, device=gpu_id))
-        trainer.extend(extensions.ExponentialShift('lr', 0.5),
-                       trigger=(20, 'epoch'))
+        # trainer.extend(extensions.ExponentialShift('lr', 0.5),
+        #                trigger=(100, 'epoch'))
+        trainer.extend(extensions.ExponentialShift('alpha', 0.5),
+                       trigger=(100, 'epoch'))
 
         # trainer.extend(extensions.snapshot(filename='snaphot_epoch_{.updater.epoch}'),trigger=(epoch, 'epoch'))
 

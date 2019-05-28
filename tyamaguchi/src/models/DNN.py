@@ -11,13 +11,14 @@ class LinearBlock(chainer.Chain):
         super(LinearBlock, self).__init__()
         with self.init_scope():
             self.fc = L.Linear(None, n_out, initialW=w)
-            self.bn = L.BatchNormalization(n_out)
+            # self.bn = L.BatchNormalization(n_out)
         self.drop = drop
 
     def __call__(self, x):
-        h = F.relu(self.bn(self.fc(x)))
+        # h = F.relu(self.bn(self.fc(x)))
+        h = F.relu(self.fc(x))
         if self.drop:
-            h = F.dropout(h)
+            h = F.dropout(h, 0.3)
         return h
 
 
@@ -25,19 +26,9 @@ class DNN(chainer.ChainList):
 
     def __init__(self):
         super(DNN, self).__init__(
-            LinearBlock(256),
             LinearBlock(256,True),
-            LinearBlock(512),
-            LinearBlock(512),
-            LinearBlock(512),
-            LinearBlock(512,True),
-            LinearBlock(512),
-            LinearBlock(512),
-            LinearBlock(512),
-            LinearBlock(512,True),
-            LinearBlock(1024),
-            LinearBlock(1024,True),
-            LinearBlock(2048),
+            LinearBlock(128,True),
+            LinearBlock(96,True),
             L.Linear(None, 1)
         )
 
