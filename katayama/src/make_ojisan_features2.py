@@ -27,7 +27,7 @@ from paths import *
 pd.options.display.precision = 15
 warnings.filterwarnings("ignore")
 
-OUTPUT_DIR = str(FEATURES_DIR/'ojisan36_2')  # set for local environment
+OUTPUT_DIR = str(FEATURES_DIR/'ojisan36')  # set for local environment
 DATA_DIR = str(DATA_DIR/'input')  # set for local environment
 
 SIG_LEN = 150000
@@ -61,8 +61,8 @@ def build_rnd_idxs():
     max_start_idx = 100000000
 
     for i in range(NUM_THREADS):
-        # np.random.seed(5591 + i)
-        np.random.seed(5590 + i)
+        np.random.seed(5591 + i) # 1
+        # np.random.seed(5590 + i) # 2
         start_indices = np.random.randint(0, max_start_idx, size=NUM_SEG_PER_PROC, dtype=np.int32)
         rnd_idxs[i, :] = start_indices
 

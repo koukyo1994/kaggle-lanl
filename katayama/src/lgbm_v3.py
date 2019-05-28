@@ -127,7 +127,7 @@ def create_submission_file(y_pred):
     return submission
 
 def main():
-    with open(SRC_DIR/'models'/'stacking_params'/f'lgbm20.json', 'r') as f:
+    with open(SRC_DIR/'models'/'stacking_params'/f'lgbm54.json', 'r') as f:
         params = json.load(f)
         params['shuffle'] = params['shuffle'] == 'True'
 
@@ -210,8 +210,8 @@ def main():
 
     submission = create_submission_file(prediction.mean(axis=1).values)
 
-    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_ojisan36_04_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
-    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_ojisan36_04.csv', submission)
+    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_ojisan36_2_04_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
+    s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_ojisan36_2_04.csv', submission)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_best_seedave_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_best_seedave.csv', submission)
     # s3.to_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/output/lgbm_added_03_oof.csv', pd.DataFrame({'oof':oof.mean(axis=1).values}), index=False)

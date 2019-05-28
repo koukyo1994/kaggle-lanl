@@ -1,3 +1,4 @@
+import os
 import re
 import time
 from pathlib import Path
@@ -10,8 +11,10 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
+# os.chdir('src')
 from paths import *
 import features.denoising as deno
+import util.s3_functions as s3
 
 
 @contextmanager
@@ -26,15 +29,19 @@ class Feature(metaclass=ABCMeta):
     prefix = ''
     suffix = ''
 
-    def __init__(self, slide_size, series_type='normal', denoising=False):
+    def __init__(self, slide_size, series_type='normal', denoising=False, ojisan=False):
         self.name = self.__class__.__name__
         self.train = pd.DataFrame()
         self.test = pd.DataFrame()
         self.slide_size = slide_size
         self.series_type = series_type
         self.denoising = denoising
+        self.ojisan = ojisan
 
-        self.save_dir = FEATURES_DIR / f'{slide_size}_slides'
+        if ojisan:
+            self.save_dir = FEATURES_DIR / f'add_ojisan36'
+        else:
+            self.save_dir = FEATURES_DIR / f'{slide_size}_slides'
         self.save_dir.mkdir(parents=True, exist_ok=True)
 
         self.test_files = []
@@ -64,8 +71,12 @@ class Feature(metaclass=ABCMeta):
 
     # For lanl
     def create_features(self, train):
-        index_tuple_list = self.create_index_tuple(self.slide_size, train.shape[0])
+        if self.ojisan:
+            index_tuple_list = self.create_index_tuple_ojisan36()
+        else:
+            index_tuple_list = self.create_index_tuple(self.slide_size, train.shape[0])
 
+        # 訓練データ用
         records = []
         for seg_id, index_tuple in tqdm(enumerate(index_tuple_list)):
             x, y, seg_id = self.slice_train_data(train, seg_id, index_tuple)
@@ -88,10 +99,13 @@ class Feature(metaclass=ABCMeta):
             records.append(record)
         self.train = pd.DataFrame(records)
 
+        # テストデータ用
         records = []
         for seg_id, f in tqdm(self.test_files):
+            # seg_id, f = test_files[0]; slide_size = 50000
             df = pd.read_csv(f, dtype={'acoustic_data': np.float64})
-            x = df.acoustic_data.values[-self.slide_size:]
+            # x = df.acoustic_data.values[-self.slide_size:]
+            x = df.acoustic_data.values
 
             if self.denoising:
                 self.suffix = 'denoised'
@@ -146,6 +160,15 @@ class Feature(metaclass=ABCMeta):
             end += slide_size
         index_tuple_list.append((start, data_length-1))
 
+        return index_tuple_list
+
+    def create_index_tuple_ojisan36(self):
+        start_indices = s3.read_csv_in_s3('s3://kaggle-nowcast/kaggle_lanl/data/input/featured/ojisan36/start_indices_4k.csv', header=None)
+        index_tuple_list = []
+        for i in range(6):
+            # i = 1
+            for start_index in (start_indices[i] + i*104_832_580).values:
+                index_tuple_list.append((start_index, start_index+150000))
         return index_tuple_list
 
 

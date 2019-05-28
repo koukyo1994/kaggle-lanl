@@ -91,27 +91,35 @@ class Tsfresh(Feature):
 
 def main():
     # Argument
-    slide_size = 50000
+    slide_size = 150000
     overwrite = False
 
     # Laod train data
     train = util.read_train_data()
 
+    tsfresh = Tsfresh(slide_size, ojisan=True)
+    tsfresh.run(train=train)
+    tsfresh.save()
+
+    tsfresh_deno = Tsfresh(slide_size, ojisan=True, denoising=True)
+    tsfresh_deno.run(train=train)
+    tsfresh_deno.save()
+
     # generater = Tsfresh2(slide_size, series_type='fftr')
     # generater.run(train=train)
     # generater.save()
-
-    generater = Tsfresh2(slide_size, series_type='fftr', denoising=True)
-    generater.run(train=train)
-    generater.save()
-
-    generater = Tsfresh2(slide_size, series_type='ffti')
-    generater.run(train=train)
-    generater.save()
-
-    generater = Tsfresh2(slide_size, series_type='ffti', denoising=True)
-    generater.run(train=train)
-    generater.save()
+    #
+    # generater = Tsfresh2(slide_size, series_type='fftr', denoising=True)
+    # generater.run(train=train)
+    # generater.save()
+    #
+    # generater = Tsfresh2(slide_size, series_type='ffti')
+    # generater.run(train=train)
+    # generater.save()
+    #
+    # generater = Tsfresh2(slide_size, series_type='ffti', denoising=True)
+    # generater.run(train=train)
+    # generater.save()
 
 
 def main_past():

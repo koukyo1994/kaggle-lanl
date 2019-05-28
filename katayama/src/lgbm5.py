@@ -128,7 +128,7 @@ def create_submission_file(y_pred):
     return submission
 
 def main():
-    json_name = 'lgbm64.json'
+    json_name = 'lgbm74.json'
     with open(SRC_DIR/'models'/'stacking_params'/f'{json_name}', 'r') as f:
         params = json.load(f)
         params['shuffle'] = params['shuffle'] == 'True'
@@ -143,7 +143,7 @@ def main():
     # added_columns = set(X_train) - set(ojisan_columns)
 
     # 不要なカラムを削除
-    drops = ['seg_id', 'seg_start', 'seg_end', 'Unnamed: 0']
+    drops = ['seg_id', 'seg_id_denoised', 'seg_start', 'seg_start_denoised', 'seg_end', 'seg_end_denoised', 'Unnamed: 0']
     for drop in drops:
         if drop in X_train.columns:
             X_train = X_train.drop(drop, axis=1)
@@ -164,6 +164,14 @@ def main():
     # drop_info['type'] = drop_info['type'].where(~drop_info['pear_drop_cols'].isin(ojisan_columns), 'original')
     # drop_info['type'].value_counts()/drop_info.shape[0]
 
+    # 前回のモデルで落とした特徴量をドロップ
+    drop_columns_list = pd.read_csv(SRC_DIR/'models'/'drop_columns'/f'drop_lgbm64.csv')
+    best_drop_cols = set(X_train.columns) & set(drop_columns_list['drop_columns'].tolist())
+    X_train = X_train.drop(best_drop_cols, axis=1)
+    X_test = X_test.drop(best_drop_cols, axis=1)
+
+    print('input data sahpes: ', X_train.shape, y_train.shape, X_test.shape)
+
     # モデルの寄与度で特徴量選択
     folds = KFold(n_splits=params['n_cv'], shuffle=params['shuffle'], random_state=params['random_state'])
     result_dict = lgbm_oof(X_train, y_train, X_test, folds, params['feature_selection_params'], params['feature_selection_ear'])
@@ -182,7 +190,7 @@ def main():
 
     # 削除するカラムを保存
     use_columns = pd.Series(X_train.columns)
-    use_columns.to_csv(SRC_DIR/'models'/'use_columns'/f'use_{json_name.split(".")[0]}.csv')
+    use_columns.to_csv(SRC_DIR/'models'/'use_columns'/f'{json_name.split(".")[0]}.csv')
     drop_columns = pd.DataFrame({'drop_columns':pear_drop_cols+lgbm_drop_cols})
     drop_columns.to_csv(SRC_DIR/'models'/'drop_columns'/f'drop_{json_name.split(".")[0]}.csv', index=False)
 
@@ -201,7 +209,7 @@ def main():
     X_test = pd.concat([X_test, X_test_pca], axis=1)
 
     # Feature resamplingでデータ拡張
-    dir_name = 'ojisan36_added'
+    dir_name = 'ojisan36_added12'
 
     X_train_aug_path = f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/train_x_aug_{params["feature_resampling_rate"]}.csv'
     X_train_aug = s3.read_csv_in_s3(X_train_aug_path)

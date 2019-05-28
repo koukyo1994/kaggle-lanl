@@ -52,9 +52,9 @@ def create_augumentation(train, AUG_FEATURE_RATIO):
     return train_aug
 
 def main():
-    dir_name = 'ojisan36'
+    dir_name = 'ojisan36_added12'
     filename = 'train_x.csv'
-    AUG_FEATURE_RATIO = 0.7
+    AUG_FEATURE_RATIO = 0.5
 
     train = s3.read_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/{filename}')
     train_aug = create_augumentation(train, AUG_FEATURE_RATIO)

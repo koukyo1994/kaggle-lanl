@@ -353,50 +353,50 @@ class FeatureGeneratorOjisan(object):
 
 def main():
     n_jobs = -1
-    denoising = False
+    denoising = True
 
     feature_dir_name = f'add_ojisan36'
     # Save datasets
     out_dir = FEATURES_DIR / feature_dir_name
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    training_fg = FeatureGeneratorOjisan(dtype='train', n_jobs=n_jobs, chunk_size=150000)
-    training_data = training_fg.generate_2(denoising=denoising)
-
-    X = training_data.drop(['target'], axis=1)
-
-    means_dict = {}
-    for col in X.columns:
-        if X[col].isnull().any():
-            print(col)
-            mean_value = X.loc[X[col] != -np.inf, col].mean()
-            X.loc[X[col] == -np.inf, col] = mean_value
-            X[col] = X[col].fillna(mean_value)
-            means_dict[col] = mean_value
-
-    if denoising:
-        X.to_csv(out_dir / f'train_features_denoised.csv', index=False)
-    else:
-        X.to_csv(out_dir / f'train_features.csv', index=False)
-
-    # test_fg = FeatureGeneratorOjisan(dtype='test', n_jobs=n_jobs, chunk_size=150000)
-    # test_data = test_fg.generate_2(denoising=denoising)
+    # training_fg = FeatureGeneratorOjisan(dtype='train', n_jobs=n_jobs, chunk_size=150000)
+    # training_data = training_fg.generate_2(denoising=denoising)
     #
-    # X_test = test_data.drop(['target'], axis=1)
-    # test_segs = test_data.seg_id
-    # y = training_data.target
+    # X = training_data.drop(['target'], axis=1)
     #
-    # for col in X_test.columns:
-    #     if X_test[col].isnull().any():
-    #         X_test.loc[X_test[col] == -np.inf, col] = means_dict[col]
-    #         X_test[col] = X_test[col].fillna(means_dict[col])
+    # means_dict = {}
+    # for col in X.columns:
+    #     if X[col].isnull().any():
+    #         print(col)
+    #         mean_value = X.loc[X[col] != -np.inf, col].mean()
+    #         X.loc[X[col] == -np.inf, col] = mean_value
+    #         X[col] = X[col].fillna(mean_value)
+    #         means_dict[col] = mean_value
     #
     # if denoising:
-    #     X_test.to_csv(out_dir / 'test_features_denoised.csv', index=False)
-    #     pd.DataFrame(y).to_csv(out_dir / f'y_denoised_{chunk_size}.csv', index=False)
+    #     X.to_csv(out_dir / f'train_features_denoised.csv', index=False)
     # else:
-    #     X_test.to_csv(out_dir / 'test_features.csv', index=False)
-    #     pd.DataFrame(y).to_csv(out_dir / f'y_{chunk_size}.csv', index=False)
+    #     X.to_csv(out_dir / f'train_features.csv', index=False)
+
+    test_fg = FeatureGeneratorOjisan(dtype='test', n_jobs=n_jobs, chunk_size=150000)
+    test_data = test_fg.generate_2(denoising=denoising)
+
+    X_test = test_data.drop(['target'], axis=1)
+    test_segs = test_data.seg_id
+    y = training_data.target
+
+    for col in X_test.columns:
+        if X_test[col].isnull().any():
+            X_test.loc[X_test[col] == -np.inf, col] = means_dict[col]
+            X_test[col] = X_test[col].fillna(means_dict[col])
+
+    if denoising:
+        X_test.to_csv(out_dir / 'test_features_denoised.csv', index=False)
+        pd.DataFrame(y).to_csv(out_dir / f'y_denoised_{chunk_size}.csv', index=False)
+    else:
+        X_test.to_csv(out_dir / 'test_features.csv', index=False)
+        pd.DataFrame(y).to_csv(out_dir / f'y_{chunk_size}.csv', index=False)
 
     return
 

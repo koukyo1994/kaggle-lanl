@@ -43,8 +43,9 @@ def create_augumentation(train, AUG_FEATURE_RATIO):
         for n, j in enumerate(aug_feature_index):
             train_aug.iloc[i, j] = train.iloc[rand_row_index[n], j]
 
-    train_aug[['seg_id', 'seg_start', 'seg_end']] = train[['seg_id', 'seg_start', 'seg_end']]
-    # train_aug.to_csv('./train_x_aug_{}.csv'.format(AUG_FEATURE_RATIO), index=False)
-    s3.to_csv_in_s3(f's3://kaggle-nowcast/kaggle_lanl/data/input/featured/{dir_name}/train_x_aug_{AUG_FEATURE_RATIO}.csv', train_aug, index=False)
-
+    try:
+        train_aug[['seg_id', 'seg_start', 'seg_end']] = train[['seg_id', 'seg_start', 'seg_end']]
+    except:
+        pass
+    
     return train_aug
